@@ -1,6 +1,6 @@
 // Выключение, перезагрузка и системные звуки ОС.
 import { useStore } from "../machine/store";
-import { sound } from "../audio/sound";
+import { sound } from "../machine/audio";
 import { useOs } from "./osStore";
 
 /** Звук ОС слышен только при включённом HD Audio. */

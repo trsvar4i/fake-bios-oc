@@ -1,5 +1,5 @@
-import { sound, useMuted } from "../audio/sound";
-import { useLang } from "../machine/store";
+import { sound, useMuted } from "../../machine/audio";
+import { useLang } from "../../machine/store";
 
 export function SoundToggle({ className = "tb-btn" }: { className?: string }) {
   const muted = useMuted();

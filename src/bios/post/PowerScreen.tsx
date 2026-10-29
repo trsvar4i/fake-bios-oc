@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { useStore, useLang } from "../machine/store";
-import { sound } from "../audio/sound";
+import { useStore, useLang } from "../../machine/store";
+import { sound } from "../../machine/audio";
 import { SoundToggle } from "../ui/SoundToggle";
 
 /** ПК выключен. Кнопка питания заодно разблокирует звук в браузере. */

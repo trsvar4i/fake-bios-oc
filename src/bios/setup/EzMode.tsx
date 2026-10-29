@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { useStore, useLang, isChanged } from "../machine/store";
-import { FAN_PRESETS, HW, STORAGE, XMP } from "../machine/hardware";
-import { PARAMS, formatValue } from "../machine/params";
-import { readings, tempClass, noiseClass, vcoreClass } from "../machine/sensors";
+import { useStore, useLang, isChanged } from "../../machine/store";
+import { FAN_PRESETS, HW, STORAGE, XMP } from "../../machine/hardware";
+import { PARAMS, formatValue } from "../../machine/params";
+import { readings, tempClass, noiseClass, vcoreClass } from "../../machine/sensors";
 import { Icon } from "../ui/Icon";
 import { FanCurve } from "./FanCurve";
 import { EZ_TABS, TOOLS, kf, toggleTile } from "./ezKeys";

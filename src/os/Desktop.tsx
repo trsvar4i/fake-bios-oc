@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useStore, useLang } from "../machine/store";
 import { DEVICES } from "../machine/hardware";
-import { useMuted, sound } from "../audio/sound";
+import { useMuted, sound } from "../machine/audio";
 import { useOs, topWindow } from "./osStore";
 import { APP_META } from "./apps/meta";
 import { AppIcon, OsLogo } from "./AppIcon";

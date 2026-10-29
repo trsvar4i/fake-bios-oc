@@ -1,7 +1,7 @@
 // Клавиатура в EZ Mode: Tab переключает зоны, стрелки двигают фокус внутри зоны, Enter/Space — действие.
-import { useStore } from "../machine/store";
-import { DEVICES, FAN_PRESETS, XMP, type DeviceId } from "../machine/hardware";
-import { PARAMS } from "../machine/params";
+import { useStore } from "../../machine/store";
+import { DEVICES, FAN_PRESETS, XMP, type DeviceId } from "../../machine/hardware";
+import { PARAMS } from "../../machine/params";
 import { openFavorites, openFlash } from "./actions";
 
 type S = ReturnType<typeof useStore.getState>;

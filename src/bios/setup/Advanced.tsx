@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
-import { useStore, useLang, isChanged } from "../machine/store";
-import { DEVICES, type DeviceId } from "../machine/hardware";
-import { PARAMS, formatValue, isDisabled } from "../machine/params";
-import { deviceAvailable } from "../machine/boot";
-import { readings } from "../machine/sensors";
+import { useStore, useLang, isChanged } from "../../machine/store";
+import { DEVICES, type DeviceId } from "../../machine/hardware";
+import { PARAMS, formatValue, isDisabled } from "../../machine/params";
+import { deviceAvailable } from "../../machine/boot";
+import { readings } from "../../machine/sensors";
 import { ACTIONS, confirmOverride, cycleParam, editParam, pickBootSlot } from "./actions";
 import { FanCurve } from "./FanCurve";
 import { PAGE_TITLES, TABS, isSelectable, pageItems, type Item } from "./menus";

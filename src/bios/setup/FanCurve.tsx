@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import { useStore } from "../machine/store";
-import { activeCurve, readings } from "../machine/sensors";
+import { useStore } from "../../machine/store";
+import { activeCurve, readings } from "../../machine/sensors";
 
 /** График кривой вентилятора. Точки перетаскиваются мышью → профиль становится Custom. */
 export function FanCurve({ width = 620, height = 320 }: { width?: number; height?: number }) {

@@ -1,12 +1,12 @@
 import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import { useStore } from "./machine/store";
-import { Dialog } from "./ui/Dialog";
-import { Setup } from "./bios/Setup";
-import { Post } from "./post/Post";
-import { BootScreen } from "./post/BootScreen";
-import { PowerScreen } from "./post/PowerScreen";
+import { Dialog } from "./bios/ui/Dialog";
+import { Setup } from "./bios/setup/Setup";
+import { Post } from "./bios/post/Post";
+import { BootScreen } from "./bios/post/BootScreen";
+import { PowerScreen } from "./bios/post/PowerScreen";
 import { Os } from "./os/Os";
-import { sound } from "./audio/sound";
+import { sound } from "./machine/audio";
 
 const STAGE_W = 1920;
 const STAGE_H = 1080;

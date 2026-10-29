@@ -1,8 +1,8 @@
 // Дерево страниц Advanced Mode.
-import { l, type L } from "../machine/i18n";
-import { DEVICE_IDS, HW, type DeviceId } from "../machine/hardware";
-import type { Config } from "../machine/params";
-import { requiredVcore, tempClass, noiseClass, vcoreClass, type Readings } from "../machine/sensors";
+import { l, type L } from "../../machine/i18n";
+import { DEVICE_IDS, HW, type DeviceId } from "../../machine/hardware";
+import type { Config } from "../../machine/params";
+import { requiredVcore, tempClass, noiseClass, vcoreClass, type Readings } from "../../machine/sensors";
 import type { ActionId } from "./actions";
 
 export type Item =

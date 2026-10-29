@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useStore, useLang } from "../machine/store";
+import { useStore, useLang } from "../../machine/store";
 
 /** Единое BIOS-окно: список вариантов, числовое поле или кнопки Yes/No. */
 export function Dialog() {

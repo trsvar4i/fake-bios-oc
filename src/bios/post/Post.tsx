@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { useStore } from "../machine/store";
-import { DEVICES, HW, XMP, type DeviceId } from "../machine/hardware";
-import { deviceAvailable } from "../machine/boot";
-import { sound } from "../audio/sound";
+import { useStore } from "../../machine/store";
+import { DEVICES, HW, XMP, type DeviceId } from "../../machine/hardware";
+import { deviceAvailable } from "../../machine/boot";
+import { sound } from "../../machine/audio";
 
 /** Экран включения: логотип, DEL — Setup, F11 — Boot Menu. Если ничего не нажать — загрузка. */
 export function Post() {

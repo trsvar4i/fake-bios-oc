@@ -25,11 +25,21 @@ npm run dev
 
 ## Структура
 
-- `src/machine` — модель ПК: железо, параметры BIOS, сенсоры, логика загрузки, общее состояние.
-- `src/bios` — интерфейс BIOS.
-- `src/post` — питание, POST, экран загрузки.
-- `src/os` — Kestrel OS.
-- `src/audio` — синтез звуков.
-- `spec.md` — общая спецификация, `docs/os-design.md` — концепция ОС.
+```
+src/
+├── main.tsx, App.tsx, app.css   точка входа: экран 1920×1080, переключение питание → BIOS → ОС
+├── machine/                     общее: модель ПК, настройки, сенсоры, загрузка, звук
+├── bios/                        BIOS: питание, POST, Setup (EZ / Advanced)
+│   ├── post/
+│   ├── setup/
+│   └── ui/
+└── os/                          Kestrel OS: экраны, рабочий стол, окна
+    └── apps/                    приложения ОС
+docs/
+├── spec.md                      общая спецификация симулятора
+└── os-design.md                 концепция ОС
+```
+
+В каждой из папок `machine`, `bios`, `os` есть свой README с описанием файлов.
 
 Стек: Vite, React, TypeScript, zustand.

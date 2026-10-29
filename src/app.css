@@ -1,0 +1,51 @@
+/* Общие стили: экран 1920×1080, курсор, базовые токены. Стили BIOS — в src/bios/bios.css, ОС — в src/os/os.css. */
+:root {
+  --bg: #08080a;
+  --panel: #111114;
+  --panel-2: #1a1a1f;
+  --line: #2c2c33;
+  --red: #e3242f;
+  --red-dim: #5c0d13;
+  --red-glow: rgba(227, 36, 47, 0.35);
+  --text: #d9d9de;
+  --muted: #8a8a94;
+  --grey: #55555d;
+  --value: #ffffff;
+  --changed: #ffc53d;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --crit: #ff4d55;
+  --ui: "Rajdhani", "Segoe UI", sans-serif;
+  --digits: "Orbitron", "Rajdhani", sans-serif;
+  --mono: "JetBrains Mono", Consolas, monospace;
+  --cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M2 2 L2 20 L7 15.5 L10.5 22.5 L13.5 21 L10 14.5 L17 14.5 Z' fill='white' stroke='black' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E") 2 2, default;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: none; padding: 0; }
+.ok { color: var(--ok) !important; }
+.warn { color: var(--warn) !important; }
+.crit { color: var(--crit) !important; }
+
+/* ---------- сцена 1920×1080 ---------- */
+.viewport { position: fixed; inset: 0; background: #000; overflow: hidden; }
+.stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: center;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--ui);
+  font-size: 22px;
+  font-weight: 500;
+  cursor: var(--cursor);
+  user-select: none;
+}
+.stage * { cursor: inherit; }
+.stage input { user-select: text; }
+

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useStore } from "../machine/store";
+import { useStore } from "../../machine/store";
 import { Header } from "./Header";
 import { EzMode } from "./EzMode";
 import { Advanced, advKey } from "./Advanced";

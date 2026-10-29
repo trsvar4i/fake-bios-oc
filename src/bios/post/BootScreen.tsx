@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useStore, useLang } from "../machine/store";
-import { bootScript } from "../machine/boot";
-import { sound } from "../audio/sound";
-import { useOs } from "../os/osStore";
+import { useStore, useLang } from "../../machine/store";
+import { bootScript } from "../../machine/boot";
+import { sound } from "../../machine/audio";
+import { useOs } from "../../os/osStore";
 
 /** Текст POST, перебор устройств и итог загрузки. Успешная загрузка Kestrel OS передаёт управление ОС. */
 export function BootScreen() {

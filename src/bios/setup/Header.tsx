@@ -1,8 +1,8 @@
 import { Fragment, useState } from "react";
-import { useStore, useLang, isChanged, changedIds } from "../machine/store";
-import { DEVICES, HW, type DeviceId } from "../machine/hardware";
-import { deviceAvailable } from "../machine/boot";
-import { readings, tempClass } from "../machine/sensors";
+import { useStore, useLang, isChanged, changedIds } from "../../machine/store";
+import { DEVICES, HW, type DeviceId } from "../../machine/hardware";
+import { deviceAvailable } from "../../machine/boot";
+import { readings, tempClass } from "../../machine/sensors";
 import { Icon } from "../ui/Icon";
 import { SoundToggle } from "../ui/SoundToggle";
 import { kf } from "./ezKeys";

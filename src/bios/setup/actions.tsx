@@ -1,9 +1,9 @@
 // Действия BIOS, которые открывают окна. Вызываются и из EZ, и из Advanced, и с клавиатуры.
-import { useStore, changedIds } from "../machine/store";
-import { PARAMS, formatValue, isDisabled, normalizeNumber } from "../machine/params";
-import { DEVICES, DEVICE_IDS, HW, type DeviceId } from "../machine/hardware";
-import { deviceAvailable } from "../machine/boot";
-import type { Lang } from "../machine/i18n";
+import { useStore, changedIds } from "../../machine/store";
+import { PARAMS, formatValue, isDisabled, normalizeNumber } from "../../machine/params";
+import { DEVICES, DEVICE_IDS, HW, type DeviceId } from "../../machine/hardware";
+import { deviceAvailable } from "../../machine/boot";
+import type { Lang } from "../../machine/i18n";
 
 const st = () => useStore.getState();
 const lang = (): Lang => (st().pending.language === "Русский" ? "ru" : "en");
