@@ -120,12 +120,12 @@
 .sub-title.first { margin-top: 0; }
 .ez-note { color: var(--muted); font-size: 19px; margin-top: 18px; line-height: 1.4; }
 
-.seg { display: inline-flex; border: 1px solid var(--line); margin-top: 22px; }
-.seg button { padding: 8px 22px; background: var(--panel); border-right: 1px solid var(--line); }
-.seg button:last-child { border-right: none; }
-.seg button:hover { color: var(--value); }
-.seg button.on { background: var(--red); color: #fff; }
-.seg button.on.changed { background: #a36a00; }
+.bios .seg { display: inline-flex; border: 1px solid var(--line); margin-top: 22px; }
+.bios .seg button { padding: 8px 22px; background: var(--panel); border-right: 1px solid var(--line); }
+.bios .seg button:last-child { border-right: none; }
+.bios .seg button:hover { color: var(--value); }
+.bios .seg button.on { background: var(--red); color: #fff; }
+.bios .seg button.on.changed { background: #a36a00; }
 
 .dimms { display: flex; gap: 14px; }
 .dimm { width: 150px; height: 150px; border: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; justify-content: space-between; padding: 12px; font-size: 18px; color: var(--muted); }

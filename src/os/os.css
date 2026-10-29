@@ -580,14 +580,14 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 8px; border-radius: 6
 .w-clock.m .w-sub { text-transform: capitalize; }
 .w-cal { height: 100%; padding: 16px 18px; display: flex; gap: 16px; }
 .w-cal-head { display: flex; flex-direction: column; min-width: 0; }
-.w-cal-wd { color: #ff453a; font-weight: 700; font-size: 15px; text-transform: uppercase; }
+.w-cal-wd { color: var(--accent); font-weight: 700; font-size: 15px; text-transform: uppercase; }
 .w-cal-day { font-size: 64px; font-weight: 300; line-height: 1.05; }
 .w-cal .w-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
 .w-cal-grid { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px 2px; align-content: start; font-size: 12.5px; text-align: center; }
-.w-cal-month { grid-column: 1 / -1; text-align: left; color: #ff453a; font-weight: 700; font-size: 13px; text-transform: uppercase; margin-bottom: 2px; }
+.w-cal-month { grid-column: 1 / -1; text-align: left; color: var(--accent); font-weight: 700; font-size: 13px; text-transform: uppercase; margin-bottom: 2px; }
 .w-cal-grid span { line-height: 20px; border-radius: 50%; }
 .w-cal-grid .out { color: rgba(var(--fg), .25); }
-.w-cal-grid .today { background: #ff453a; color: #fff; font-weight: 700; }
+.w-cal-grid .today { background: var(--accent); color: #fff; font-weight: 700; }
 .w-cal-grid .ev { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; }
 .w-rem { height: 100%; padding: 14px 18px; display: flex; flex-direction: column; gap: 6px; }
 .w-rem-head { display: flex; justify-content: space-between; color: var(--accent); font-weight: 700; }
@@ -601,8 +601,13 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 8px; border-radius: 6
 .w-ring-arc { fill: none; stroke: #30d158; stroke-width: 9; stroke-linecap: round; stroke-dasharray: 263.9; transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset 1s ease, stroke .5s; }
 .w-ring.warn .w-ring-arc { stroke: #ff9f0a; }
 .w-ring.crit .w-ring-arc { stroke: #ff453a; }
-.w-ring-val { font-size: 26px; font-weight: 600; text-anchor: middle; dominant-baseline: middle; fill: #fff; font-family: -apple-system, Inter, sans-serif; }
-.w-ring-cap { font-size: 11px; text-anchor: middle; fill: rgba(var(--fg), .6); font-family: -apple-system, Inter, sans-serif; }
+.w-ring-val { font-size: 26px; font-weight: 600; text-anchor: middle; dominant-baseline: middle; fill: var(--text); font-family: var(--font); }
+.w-ring-cap { font-size: 11px; text-anchor: middle; fill: rgba(var(--fg), .6); font-family: var(--font); }
+.w-orbit-track { fill: none; stroke: rgba(var(--fg), .1); stroke-width: 3; }
+.w-orbit-arc { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 276.5; transform: rotate(-90deg); transform-origin: 50% 50%; opacity: .85; }
+.w-orbit-dot { fill: #fff; filter: drop-shadow(0 0 3px var(--accent)); }
+.w-orbit-time { font-family: var(--font); font-size: 25px; font-weight: 300; letter-spacing: -.5px; text-anchor: middle; dominant-baseline: middle; fill: var(--text); font-variant-numeric: tabular-nums; }
+.w-orbit-day { font-family: var(--font); font-size: 9px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; text-anchor: middle; fill: var(--accent); }
 .w-sys-rows { display: flex; flex-direction: column; gap: 6px; font-size: 15px; min-width: 170px; }
 .w-sys-rows div { display: flex; justify-content: space-between; gap: 14px; }
 .w-sys-rows span { color: var(--text-2); }

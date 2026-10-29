@@ -161,7 +161,21 @@ function ClockW({ size }: { size: "s" | "m" }) {
   const fmt = useTimeFormat();
   const { lang } = useLang();
   const locale = lang === "ru" ? "ru-RU" : "en-GB";
-  if (size === "s") return <div className="w-clock"><Dial d={now} size={140} /></div>;
+  if (size === "s") {
+    // секундная дуга по кругу и крупное время — свой циферблат Kestrel
+    const sec = now.getSeconds() + now.getMilliseconds() / 1000;
+    return (
+      <div className="w-clock">
+        <svg className="w-orbit" viewBox="0 0 100 100" width="150" height="150">
+          <circle cx="50" cy="50" r="44" className="w-orbit-track" />
+          <circle cx="50" cy="50" r="44" className="w-orbit-arc" style={{ strokeDashoffset: 276.5 * (1 - sec / 60) }} />
+          <circle cx={50 + 44 * Math.sin((sec / 60) * 2 * Math.PI)} cy={50 - 44 * Math.cos((sec / 60) * 2 * Math.PI)} r="3" className="w-orbit-dot" />
+          <text x="50" y="49" className="w-orbit-time">{fmt(now).replace(/\s?[AP]M$/i, "")}</text>
+          <text x="50" y="66" className="w-orbit-day">{now.toLocaleDateString(locale, { weekday: "short" })}</text>
+        </svg>
+      </div>
+    );
+  }
   return (
     <div className="w-clock m">
       <Dial d={now} size={140} />
