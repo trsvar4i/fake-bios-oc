@@ -17,7 +17,7 @@ export function Settings() {
     ["general", t("General", "Основные")],
     ["appearance", t("Appearance", "Оформление")],
     ["personal", t("Wallpaper", "Обои")],
-    ["dock", t("Desktop & Dock", "Рабочий стол и Dock")],
+    ["dock", t("Desktop & Perch", "Рабочий стол и «Насест»")],
     ["account", t("Account", "Учётная запись")],
     ["sound", t("Sound", "Звук")],
     ["update", t("Software Update", "Обновление ПО")],
@@ -94,6 +94,8 @@ function General() {
 function Appearance() {
   const { t } = useLang();
   const theme = useOs((s) => s.prefs.theme);
+  const nightLight = useOs((s) => s.prefs.nightLight);
+  const lite = useOs((s) => s.prefs.lite);
   const opts: ["light" | "dark" | "auto", string][] = [["light", t("Light", "Светлое")], ["dark", t("Dark", "Тёмное")], ["auto", t("Auto", "Авто")]];
   return (
     <>
@@ -107,6 +109,20 @@ function Appearance() {
         ))}
       </div>
       <p className="set-note">{t("Auto is light from 7:00 to 19:00 and dark in the evening.", "«Авто» — светлое с 7:00 до 19:00, вечером тёмное.")}</p>
+      <label className="set-switch">
+        <span>{t("Night Light", "Ночной свет")}<small>{t("Warmer colors for the evening", "Тёплые цвета для вечера")}</small></span>
+        <input type="checkbox" checked={nightLight} onChange={(e) => useOs.getState().setPref("nightLight", e.target.checked)} />
+      </label>
+      <h2 className="set-sub">{t("Performance", "Быстродействие")}</h2>
+      <div className="set-line">
+        <span>{t("Lite mode", "Облегчённый режим")}<small className="set-hint">{t("No blur behind panels and windows. Auto turns it on for phones and weak devices.", "Без размытия под панелями и окнами. «Авто» включает его на телефонах и слабых устройствах.")}</small></span>
+        <div className="seg">
+          {([["auto", t("Auto", "Авто")], ["on", t("On", "Вкл.")], ["off", t("Off", "Выкл.")]] as const).map(([id, name]) => (
+            <button key={id} className={lite === id ? "on" : ""} onClick={() => useOs.getState().setPref("lite", id)}>{name}</button>
+          ))}
+        </div>
+      </div>
+      <p className="set-note">{t("Animations follow the system “Reduce motion” setting.", "Анимации подчиняются системной настройке «Уменьшить движение».")}</p>
     </>
   );
 }
@@ -117,13 +133,13 @@ function DockPage() {
   const set = useOs.getState().setPref;
   return (
     <>
-      <h2>Dock</h2>
+      <h2>{t("Perch", "«Насест»")}</h2>
       <label className="set-switch">
-        <span>{t("Magnification", "Увеличение")}<small>{t("Icons grow under the pointer", "Иконки растут под указателем")}</small></span>
-        <input type="checkbox" checked={prefs.dockMagnify} onChange={(e) => set("dockMagnify", e.target.checked)} />
+        <span>{t("Show the name of the active app", "Подпись у активной программы")}<small>{t("The front app expands into a labelled pill", "Программа впереди раскрывается в «пилюлю» с названием")}</small></span>
+        <input type="checkbox" checked={prefs.perchLabels} onChange={(e) => set("perchLabels", e.target.checked)} />
       </label>
       <div className="set-line">
-        <span>{t("Apps in Dock", "Приложений в Dock")}: {prefs.dock.length}</span>
+        <span>{t("Pinned apps", "Закреплённых программ")}: {prefs.dock.length}</span>
         <button className="set-btn" onClick={() => set("dock", DEFAULT_DOCK)}>{t("Restore Defaults", "Вернуть по умолчанию")}</button>
       </div>
       <h2 className="set-sub">{t("Widgets", "Виджеты")}</h2>
@@ -201,7 +217,7 @@ function Users() {
         <input className="set-input" value={draft} maxLength={20} placeholder={t("New user name", "Имя нового пользователя")} onChange={(e) => setDraft(e.target.value)} />
         <button className="set-btn primary" disabled={!draft.trim() || list.length >= 5}>{t("Add User", "Добавить")}</button>
       </form>
-      <p className="set-note">{t("Each user has their own wallpaper, password, widgets, Dock and files.", "У каждого пользователя свои обои, пароль, виджеты, Dock и файлы.")}</p>
+      <p className="set-note">{t("Each user has their own wallpaper, password, widgets, Perch and files.", "У каждого пользователя свои обои, пароль, виджеты, «Насест» и файлы.")}</p>
     </>
   );
 }

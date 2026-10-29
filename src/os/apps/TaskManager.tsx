@@ -31,8 +31,8 @@ export function TaskManager() {
   const sys: Proc[] = [
     { key: "kernel", name: "kernel_task", cpu: 0.4, mem: 12 },
     { key: "ws", name: "WindowServer", cpu: 1.2, mem: 88 },
-    { key: "dock", name: "Dock", cpu: 0.6, mem: 142 },
-    { key: "spot", name: t("Spotlight", "Spotlight"), cpu: 0.9, mem: 196 },
+    { key: "dock", name: t("Perch", "Насест"), cpu: 0.6, mem: 142 },
+    { key: "spot", name: t("Swoop", "Бросок"), cpu: 0.9, mem: 196 },
     ...(s.saved.hdAudio ? [{ key: "aud", name: "coreaudiod", cpu: 0.1, mem: 18 }] : []),
     ...(s.saved.lanController ? [{ key: "net", name: "networkd", cpu: 0.2, mem: 24 }] : []),
   ];

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useStore } from "../../machine/store";
+import { unlock } from "../../machine/quests";
 import { Header } from "./Header";
 import { EzMode } from "./EzMode";
 import { Advanced, advKey } from "./Advanced";
@@ -8,6 +9,8 @@ import { confirmDefaults, confirmExit, confirmSave, openFavorites, toggleMode } 
 
 export function Setup() {
   const mode = useStore((s) => s.mode);
+
+  useEffect(() => { unlock("bios"); }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

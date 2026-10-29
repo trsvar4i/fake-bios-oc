@@ -33,7 +33,7 @@ export function Preview({ winId }: { winId: number }) {
   });
 
   if (!path || !data?.startsWith("data:image")) {
-    return <div className="pv-empty">{t("Open a picture from Finder — for example one saved in Paint.", "Откройте картинку из Finder — например, сохранённую в Рисовалке.")}</div>;
+    return <div className="pv-empty">{t("Open a picture from Files — for example one saved in Paint.", "Откройте картинку из «Файлов» — например, сохранённую в Рисовалке.")}</div>;
   }
   return (
     <div className="preview">

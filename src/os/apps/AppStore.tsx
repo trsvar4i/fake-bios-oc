@@ -6,7 +6,7 @@ import { AppIcon } from "../AppIcon";
 import { music } from "../music";
 import "./AppStore.css";
 
-/** Установка: имитация загрузки, затем программа появляется в Launchpad, Spotlight и Терминале. */
+/** Установка: имитация загрузки, затем программа появляется в «Гнезде», «Броске» и Терминале. */
 function install(id: string, title: string, note: string, done: () => void) {
   window.setTimeout(() => {
     const os = useOs.getState();
@@ -64,7 +64,7 @@ export function AppStore() {
                 ) : loading ? (
                   <span className="as-ring" aria-label="Installing" />
                 ) : (
-                  <button className="as-get" disabled={!online || !!busy} onClick={() => { setBusy(m.id); install(m.id, m.title[lang], t("Installed — find it in Launchpad", "Установлено — ищите в Launchpad"), () => setBusy(null)); }}>
+                  <button className="as-get" disabled={!online || !!busy} onClick={() => { setBusy(m.id); install(m.id, m.title[lang], t("Installed — find it in the Nest (Alt+L)", "Установлено — ищите в «Гнезде» (Alt+L)"), () => setBusy(null)); }}>
                     {t("Get", "Загрузить")}
                   </button>
                 )}

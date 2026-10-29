@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useStore, useLang } from "../machine/store";
 import { readings, tempClass } from "../machine/sensors";
 import { l, type L } from "../machine/i18n";
-import { MENUBAR_H, SCREEN_W, WORK, topWindow, useOs, type Widget } from "./osStore";
+import { WORK_TOP, SCREEN_W, WORK, topWindow, useOs, type Widget } from "./osStore";
 import { Dial } from "./apps/Clock";
 import { dayKey, monthGrid } from "./apps/Calendar";
 import { toggleReminder } from "./apps/Reminders";
@@ -31,12 +31,12 @@ const overlaps = (a: { x: number; y: number; w: number; h: number }, b: typeof a
 function freeSpot(size: "s" | "m", widgets: Widget[]) {
   const { w, h } = WSIZE[size];
   for (let x = 40; x + w < SCREEN_W - 200; x += GRID) {
-    for (let y = MENUBAR_H + 36; y + h < WORK.top + WORK.h; y += GRID) {
+    for (let y = WORK_TOP + 36; y + h < WORK.top + WORK.h; y += GRID) {
       const r = { x, y, w, h };
       if (!widgets.some((o) => overlaps(r, { x: o.x, y: o.y, ...WSIZE[o.size] }))) return { x, y };
     }
   }
-  return { x: 40, y: MENUBAR_H + 36 };
+  return { x: 40, y: WORK_TOP + 36 };
 }
 
 export function addWidget(kind: string, size: "s" | "m") {
@@ -99,7 +99,7 @@ function DesktopWidget({ w, editing, t }: { w: Widget; editing: boolean; t: (en:
         const snap = (v: number) => Math.round(v / 20) * 20;
         patchWidget(w.id, {
           x: Math.max(20, Math.min(SCREEN_W - width - 20, snap(drag.x))),
-          y: Math.max(MENUBAR_H + 16, Math.min(WORK.top + WORK.h - h, snap(drag.y))),
+          y: Math.max(WORK_TOP + 16, Math.min(WORK.top + WORK.h - h, snap(drag.y))),
         });
         setDrag(null);
       }}

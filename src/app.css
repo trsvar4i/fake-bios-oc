@@ -77,3 +77,20 @@ body { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 @keyframes rotate-phone { 0%, 20% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
 .rotate-hint button { min-width: 220px; height: 46px; border-radius: 23px; background: #fff; color: #000; font-weight: 600; }
 .rotate-hint button.ghost { background: none; color: rgba(255, 255, 255, .6); }
+
+/* ---------- тост «Испытание пройдено»: поверх любого экрана ---------- */
+.quest-toast { position: absolute; top: 22px; left: 50%; z-index: 40000; display: flex; align-items: center; gap: 16px; min-width: 460px; max-width: 640px; padding: 14px 22px 14px 14px; border-radius: 22px; cursor: pointer;
+  font-family: "Manrope", "Inter", sans-serif; color: #f6f6f8; background: rgba(24, 22, 14, .92); backdrop-filter: blur(24px);
+  box-shadow: 0 0 0 1px rgba(250, 204, 21, .5), 0 20px 60px rgba(0, 0, 0, .5), 0 0 50px rgba(250, 204, 21, .18);
+  transform: translateX(-50%); animation: qt-in .6s cubic-bezier(.34, 1.36, .64, 1) both; }
+.quest-toast.out { animation: qt-out .3s ease-in both; }
+@keyframes qt-in { from { opacity: 0; transform: translate(-50%, -40px) scale(.9); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes qt-out { to { opacity: 0; transform: translate(-50%, -20px) scale(.97); } }
+.qt-badge { width: 54px; height: 54px; flex: none; border-radius: 17px; display: flex; align-items: center; justify-content: center; background: linear-gradient(140deg, #fde047, #ca8a04); color: #422006; box-shadow: 0 6px 20px rgba(250, 204, 21, .4); animation: qt-badge .9s cubic-bezier(.34, 1.36, .64, 1) .15s both; }
+@keyframes qt-badge { from { transform: rotate(-30deg) scale(.4); } to { transform: none; } }
+.qt-badge svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
+.qt-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.qt-text small { font-size: 12.5px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #facc15; }
+.qt-text b { font-size: 20px; }
+.qt-text span { font-size: 15px; color: rgba(246, 246, 248, .7); }
+@media (prefers-reduced-motion: reduce) { .quest-toast, .qt-badge { animation-duration: .01ms; } }

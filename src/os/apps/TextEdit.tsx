@@ -3,7 +3,7 @@ import { useOs } from "../osStore";
 import { useFs } from "../fs";
 import "./TextEdit.css";
 
-/** Текстовый редактор файла из Finder. Изменения сохраняются сразу, как в macOS. */
+/** Текстовый редактор файла из «Файлов». Изменения сохраняются сразу. */
 export function TextEdit({ winId }: { winId: number }) {
   const { t } = useLang();
   const path = useOs((s) => s.windows.find((w) => w.id === winId)?.arg);

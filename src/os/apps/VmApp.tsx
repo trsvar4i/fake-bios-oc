@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useStore, useLang } from "../../machine/store";
 import { osPower, playOs } from "../power";
+import { unlock } from "../../machine/quests";
 import "./VmApp.css";
 
 interface Vm { name: string; os: string; cpus: number; ram: number; state: "off" | "starting" | "running" }
@@ -42,7 +43,7 @@ export function VmApp() {
 
   useEffect(() => {
     if (vm.state !== "starting") return;
-    if (logLines >= BOOT_LOG.length) { setState("running"); return; }
+    if (logLines >= BOOT_LOG.length) { setState("running"); unlock("vm"); return; }
     const id = window.setTimeout(() => setLogLines((n) => n + 1), 350);
     return () => clearTimeout(id);
   }, [vm.state, logLines]);

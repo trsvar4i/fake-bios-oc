@@ -3,6 +3,7 @@ import { useStore, useLang } from "../../machine/store";
 import { bootScript } from "../../machine/boot";
 import { sound } from "../../machine/audio";
 import { useOs } from "../../os/osStore";
+import { unlock } from "../../machine/quests";
 
 /** Текст POST, перебор устройств и итог загрузки. Успешная загрузка Kestrel OS передаёт управление ОС. */
 export function BootScreen() {
@@ -34,6 +35,14 @@ export function BootScreen() {
 
   useEffect(() => {
     if (!done) return;
+    // испытания: разные исходы загрузки
+    const title = final.title.en;
+    if (final.type === "linux") unlock("linux");
+    if (final.type === "ocfail") unlock("memfail");
+    if (final.alarm) unlock("hot");
+    if (title === "Secure Boot Violation") unlock("secureboot");
+    if (title === "INACCESSIBLE_BOOT_DEVICE") unlock("raid");
+    if (title.startsWith("Reboot and Select")) unlock("nodev");
     if (final.type === "os") {
       useOs.getState().reset();
       useStore.getState().patch({ phase: "os", osUnstable: !!final.unstable });

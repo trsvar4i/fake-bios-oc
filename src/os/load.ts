@@ -5,6 +5,7 @@ import { useStore, useLang } from "../machine/store";
 import { readings } from "../machine/sensors";
 import { useOs } from "./osStore";
 import { APP_META } from "./apps/meta";
+import { unlock } from "../machine/quests";
 
 /** Загрузка, к которой стремится процессор: фон системы + окна + нагрузочный тест. */
 export function targetLoad(): number {
@@ -34,6 +35,7 @@ export function useLoadService() {
       const next = s.load + (targetLoad() - s.load) * 0.35 + (Math.random() - 0.5) * 0.02;
       useStore.setState({ load: Math.min(1, Math.max(0.02, next)) });
       const hot = readings(s.saved, s.thermal, s).throttled;
+      if (hot) unlock("hot");
       if (hot && !wasHot.current && Date.now() - lastWarn.current > 60_000) {
         lastWarn.current = Date.now();
         useOs.getState().notify("taskmgr", t("CPU is overheating", "Процессор перегревается"),

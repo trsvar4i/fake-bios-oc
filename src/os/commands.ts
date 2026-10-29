@@ -1,5 +1,5 @@
-// Команды системы: одни и те же для строки меню, горячих клавиш и Spotlight.
-// ⌘ на клавиатуре ПК — это Alt (⌥): Alt+W, Alt+Q, Alt+M, Alt+N, Alt+H, Alt+, ; правка — обычные Ctrl+C/V/X/Z/A.
+// Команды системы: одни и те же для меню окна, «Насеста», горячих клавиш и «Броска».
+// Системные сочетания — с Alt: Alt+W, Alt+Q, Alt+M, Alt+N, Alt+D, Alt+, ; правка — обычные Ctrl+C/V/X/Z/A.
 import { useOs, topWindow } from "./osStore";
 import { APP_META } from "./apps/meta";
 import { HOME, join, useFs } from "./fs";
@@ -9,7 +9,7 @@ const ru = () => useStore.getState().pending.language === "Русский";
 
 const top = () => topWindow(useOs.getState().windows);
 
-/** Текстовое поле, в котором сейчас курсор (для меню «Правка»). */
+/** Текстовое поле, в котором сейчас курсор. */
 export const editable = (): HTMLInputElement | HTMLTextAreaElement | null => {
   const el = document.activeElement;
   return el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && /^(text|search|password|)$/.test(el.type)) ? el : null;
@@ -24,9 +24,13 @@ export const cmd = {
     const w = top();
     if (w) useOs.getState().windows.filter((x) => x.app === w.app && !x.min).forEach((x) => useOs.getState().minimize(x.id));
   },
-  hideOthers: () => {
-    const w = top();
-    if (w) useOs.getState().windows.filter((x) => x.app !== w.app && !x.min).forEach((x) => useOs.getState().minimize(x.id));
+  /** Alt+D — показать рабочий стол: свернуть все окна текущего стола (повтор — вернуть). */
+  showDesktop: () => {
+    const os = useOs.getState();
+    const here = os.windows.filter((x) => x.space === os.space && x.phase !== "closing");
+    const open = here.filter((x) => !x.min);
+    if (open.length) open.forEach((x) => os.minimize(x.id));
+    else here.forEach((x) => os.focus(x.id));
   },
   showAll: () => useOs.getState().windows.filter((x) => x.min).forEach((x) => useOs.getState().focus(x.id)),
   bringAllToFront: () => {
@@ -83,7 +87,7 @@ function recentApps() {
   return seen;
 }
 
-/** ⌥` — следующее приложение (⇧ — предыдущее). Переключение — когда отпущен Alt. */
+/** Alt+` — следующее приложение (Shift — предыдущее). Переключение — когда отпущен Alt. */
 export function switcherStep(back: boolean) {
   const os = useOs.getState();
   const sw = os.switcher;
@@ -107,9 +111,9 @@ export function switcherCommit(app?: string) {
   if (win) os.focus(win.id);
 }
 
-/** Горячие клавиши в стиле macOS. Возвращает true, если клавиша обработана. */
+/** Горячие клавиши Kestrel. Возвращает true, если клавиша обработана. */
 export function handleShortcut(e: KeyboardEvent): boolean {
-  if (e.ctrlKey && e.code === "Space") { useOs.getState().setPanel("spotlight"); return true; }
+  if ((e.ctrlKey || e.altKey) && e.code === "Space") { useOs.getState().setPanel("swoop"); return true; }
   if (e.altKey && e.code === "Backquote") { switcherStep(e.shiftKey); return true; }
   if (e.altKey && e.code === "ArrowUp") { useOs.getState().setPanel("overview"); return true; }
   // рабочие столы: Alt+←/→ — соседний, Alt+1…6 — по номеру
@@ -121,8 +125,9 @@ export function handleShortcut(e: KeyboardEvent): boolean {
   if (e.altKey && !e.ctrlKey && /^Digit[1-6]$/.test(e.code)) { useOs.getState().goSpace(Number(e.code.slice(5)) - 1); return true; }
   if (!e.altKey || e.ctrlKey || e.metaKey) return false;
   const map: Record<string, () => void> = {
-    KeyW: cmd.closeWindow, KeyQ: cmd.quitApp, KeyM: cmd.minimize, KeyH: e.shiftKey ? cmd.hideOthers : cmd.hideApp,
-    KeyN: e.shiftKey ? cmd.newFolder : cmd.newWindow, Comma: cmd.settings, KeyL: () => useOs.getState().setPanel("launchpad"),
+    KeyW: cmd.closeWindow, KeyQ: cmd.quitApp, KeyM: cmd.minimize, KeyD: cmd.showDesktop, Enter: cmd.zoom,
+    KeyN: e.shiftKey ? cmd.newFolder : cmd.newWindow, Comma: cmd.settings,
+    KeyL: () => useOs.getState().setPanel("nest"), KeyH: () => useOs.getState().setPanel("hub"),
   };
   const fn = map[e.code];
   if (!fn) return false;

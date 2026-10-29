@@ -7,6 +7,7 @@ import { APP_META } from "./meta";
 import { osPower } from "../power";
 import { HOME, join, nameOf, parentOf, resolvePath as resolve, useFs } from "../fs";
 import { openPath } from "./Finder";
+import { unlock } from "../../machine/quests";
 import "./Terminal.css";
 
 /** имя компьютера из «Системных настроек» */
@@ -77,7 +78,7 @@ export function Terminal({ winId }: { winId: number }) {
           "  ls [dir]          list files            cd <dir>        change directory",
           "  cat <file>        print a file          pwd             current directory",
           "  mkdir, touch      create folder, file   rm [-r], mv     delete, rename",
-          "  echo text > file  write to a file       open <file>     open in Finder / TextEdit",
+          "  echo text > file  write to a file       open <file>     open in Files / Text Editor",
           "  open -a <App>     open an application   echo <text>     print text",
           "  date, uptime      time and uptime       whoami          current user",
           "  uname -a          kernel                sw_vers         OS version",
@@ -145,7 +146,8 @@ export function Terminal({ winId }: { winId: number }) {
         if (args[0] === "stop") { useOs.setState({ stressUntil: 0 }); return out("stress: stopped"); }
         const sec = Math.min(300, Math.max(5, parseInt(args[0] ?? "30", 10) || 30));
         useOs.setState({ stressUntil: Date.now() + sec * 1000 });
-        return out(`stress: hogging ${HW.threads} CPUs for ${sec}s (stop: stress stop)`, "Watch the temperature in Activity Monitor or the PC widget.");
+        unlock("stress");
+        return out(`stress: hogging ${HW.threads} CPUs for ${sec}s (stop: stress stop)`, "Watch the temperature in System Monitor or the PC widget.");
       }
       case "mkdir": {
         const names = args.filter((a) => !a.startsWith("-"));

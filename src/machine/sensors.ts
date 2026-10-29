@@ -15,6 +15,8 @@ export function dutyAt(curve: Curve, t: number): number {
 }
 
 const ratioOf = (c: Config) => c.cpuRatio || HW.baseRatio;
+/** Частота ядра по настройкам BIOS, ГГц (без режима питания и троттлинга). */
+export const cpuGhz = (c: Config) => ratioOf(c) / 10;
 
 /** Напряжение, которого хватает множителю (его же ставит Auto). */
 export function requiredVcore(c: Config) {

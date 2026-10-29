@@ -8,17 +8,18 @@ export type OsStage = "splash" | "lock" | "desktop" | "crash" | "leaving";
 
 export const SCREEN_W = 1920;
 export const SCREEN_H = 1080;
-/** верхняя полоса с тремя «островками» (меню, часы, статус) */
-export const MENUBAR_H = 52;
-/** зона дока снизу: развёрнутое окно её не перекрывает */
-export const DOCK_ZONE = 112;
+/** сверху у Kestrel нет панели: рабочая область начинается от края экрана */
+export const WORK_TOP = 0;
+/** зона «Насеста» снизу: развёрнутое окно её не перекрывает */
+export const PERCH_ZONE = 96;
 /** рабочая область для развёрнутых и прилипших окон */
-export const WORK = { top: MENUBAR_H, h: SCREEN_H - MENUBAR_H - DOCK_ZONE };
+export const WORK = { top: WORK_TOP, h: SCREEN_H - WORK_TOP - PERCH_ZONE };
 
 /** длительности анимаций окон, мс (совпадают с os.css) */
-export const ANIM = { open: 280, close: 200, minimize: 460, zoom: 380 };
+export const ANIM = { open: 340, close: 220, minimize: 420, zoom: 380 };
 
-export type Panel = "launchpad" | "spotlight" | "control" | "widgets" | "about" | "shortcuts" | "overview" | "notifications" | "welcome" | null;
+/** Панели оболочки: «Гнездо» (все программы), «Бросок» (командная палитра), «Хаб» (уведомления и быстрые настройки). */
+export type Panel = "nest" | "swoop" | "hub" | "widgets" | "about" | "shortcuts" | "overview" | "welcome" | null;
 
 export interface Notice { id: number; app: string; title: string; body: string; time: number }
 
@@ -62,9 +63,16 @@ export interface Prefs {
   passwordHint: string;
   /** отпечаток настроек оборудования при прошлой загрузке; "" — система ещё ни разу не запускалась */
   lastHardware: string;
-  /** закреплённые в доке приложения, по порядку */
+  /** закреплённые на «Насесте» приложения, по порядку (ключ dock — с прежних версий) */
   dock: string[];
+  /** устарело: увеличение дока из прежних версий */
   dockMagnify: boolean;
+  /** подписи у запущенных программ на «Насесте» */
+  perchLabels: boolean;
+  /** «Ночной свет»: тёплый оттенок экрана */
+  nightLight: boolean;
+  /** облегчённый режим: меньше размытия и анимаций (auto — по устройству) */
+  lite: "auto" | "on" | "off";
   widgets: Widget[];
   reminders: Reminder[];
   /** события календаря: "2026-10-29" → список */
@@ -84,11 +92,14 @@ export interface Prefs {
 }
 
 // ---------- настройки пользователя (переживают перезагрузку) ----------
-export const DEFAULT_DOCK = ["finder", "launchpad", "appstore", "notes", "reminders", "calendar", "calculator", "clock", "terminal", "taskmgr", "settings"];
+export const DEFAULT_DOCK = ["finder", "browser", "appstore", "notes", "reminders", "calendar", "calculator", "clock", "terminal", "taskmgr", "settings"];
 const DEFAULT_PREFS: Prefs = {
   wallpaper: "aurora", notes: "", userName: "User", password: "", passwordHint: "", lastHardware: "",
   dock: DEFAULT_DOCK,
   dockMagnify: true,
+  perchLabels: true,
+  nightLight: false,
+  lite: "auto",
   widgets: [
     { id: 1, kind: "clock", size: "s", x: 40, y: 70 },
     { id: 2, kind: "calendar", size: "s", x: 230, y: 70 },
@@ -109,7 +120,8 @@ function loadPrefs(id?: string): Prefs {
   try {
     const raw = localStorage.getItem(prefsKey(id));
     const p: Prefs = raw ? { ...DEFAULT_PREFS, ...JSON.parse(raw) } : { ...DEFAULT_PREFS };
-    p.dock = p.dock.filter((a) => a === "launchpad" || APP_META[a]);
+    // кнопка Launchpad из прежнего дока стала постоянной кнопкой «Гнезда»
+    p.dock = p.dock.filter((a) => APP_META[a]);
     return p;
   } catch {
     return { ...DEFAULT_PREFS };
@@ -125,11 +137,11 @@ interface OsState {
   windows: Win[];
   nextId: number;
   zTop: number;
-  /** открытая панель: Launchpad, Spotlight, пункт управления, галерея виджетов, «О программе» */
+  /** открытая панель: «Гнездо», «Бросок», «Хаб», галерея виджетов, «О программе» */
   panel: Panel;
   /** для какого приложения открыто окно «О программе» */
   aboutApp: string | null;
-  /** открытое меню строки меню */
+  /** открытое меню (меню окна, меню питания) */
   menu: string | null;
   /** открытое контекстное меню */
   ctx: CtxMenu | null;
@@ -141,7 +153,7 @@ interface OsState {
   brightness: number;
   /** «Не беспокоить»: без звуков и баннеров уведомлений */
   dnd: boolean;
-  /** уведомления (центр уведомлений) и показанный сейчас баннер */
+  /** уведомления (в «Хабе») и показанный сейчас всплывающий тост */
   notices: Notice[];
   banner: number | null;
   /** рабочие столы: сколько их и какой открыт; dir — откуда «въехал» текущий (для анимации) */
@@ -233,9 +245,9 @@ export const useOs = create<OsState>((set, get) => ({
     // каскад: новое окно чуть ниже и правее предыдущего, чтобы окна не ложились стопкой
     const last = [...s.windows].filter((w) => w.phase !== "closing" && !w.max && !w.snap).sort((a, b) => b.id - a.id)[0];
     let x = Math.round((SCREEN_W - meta.w) / 2) - 120;
-    let y = MENUBAR_H + Math.max(16, Math.round((WORK.h - meta.h) / 2) - 70);
+    let y = WORK_TOP + Math.max(24, Math.round((WORK.h - meta.h) / 2) - 50);
     if (last) { x = last.x + 44; y = last.y + 38; }
-    if (x + meta.w > SCREEN_W - 20 || y + meta.h > WORK.top + WORK.h) { x = 140 + (s.nextId % 5) * 30; y = MENUBAR_H + 16 + (s.nextId % 5) * 26; }
+    if (x + meta.w > SCREEN_W - 20 || y + meta.h > WORK.top + WORK.h) { x = 140 + (s.nextId % 5) * 30; y = WORK_TOP + 24 + (s.nextId % 5) * 26; }
     const win: Win = { id: s.nextId, app, arg, x, y, w: meta.w, h: meta.h, z, min: false, max: false, snap: null, phase: "opening", space: s.space };
     set({ windows: [...s.windows, win], nextId: s.nextId + 1, zTop: z });
     after(ANIM.open, win.id, { phase: undefined });
@@ -247,7 +259,7 @@ export const useOs = create<OsState>((set, get) => ({
   focus: (id) => {
     const w = get().windows.find((x) => x.id === id);
     if (!w) return;
-    // окно на другом рабочем столе — сначала переезжаем туда, как в macOS
+    // окно на другом рабочем столе — сначала переезжаем туда
     if (w.space !== get().space) get().goSpace(w.space);
     const z = get().zTop + 1;
     if (w.min) {

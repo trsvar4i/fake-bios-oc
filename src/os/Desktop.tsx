@@ -3,9 +3,8 @@ import { useLang } from "../machine/store";
 import { useOs, topWindow } from "./osStore";
 import { AppIcon } from "./AppIcon";
 import { Window } from "./Window";
-import { MenuBar } from "./MenuBar";
-import { Dock } from "./Dock";
-import { AboutPanel, AppSwitcher, Launchpad, OverviewBackdrop, ShortcutsPanel, Spotlight, WelcomePanel } from "./Overlays";
+import { Hub, Perch, Toasts } from "./Perch";
+import { AboutPanel, AppSwitcher, Nest, OverviewBackdrop, ShortcutsPanel, Swoop, WelcomePanel } from "./Overlays";
 import { ContextMenuLayer } from "./Menus";
 import { DesktopWidgets, WidgetGallery } from "./Widgets";
 import { Wallpaper } from "./Wallpaper";
@@ -14,6 +13,9 @@ import { FileItem, ctxAt, itemMenu, openPath, useDrop } from "./apps/Finder";
 import { cmd, handleShortcut, switcherCommit } from "./commands";
 import { useTimerService } from "./apps/Clock";
 import { useLoadService } from "./load";
+import { onQuest, unlock } from "../machine/quests";
+import { useStore } from "../machine/store";
+import { cpuGhz } from "../machine/sensors";
 
 const DESK = `${HOME}/Desktop`;
 
@@ -25,8 +27,9 @@ const isLight = (theme: "dark" | "light" | "auto") => {
 };
 
 /**
- * Рабочий стол в духе macOS: строка меню, окна, док, виджеты, значок диска и файлы рабочего стола справа.
- * Правая кнопка мыши работает только там, где у неё есть смысл: пустой рабочий стол, файлы, виджеты, док.
+ * Рабочий стол Kestrel: обои, виджеты, значок диска и файлы справа, окна, «Насест» внизу, «Хаб» справа.
+ * Сверху ничего нет — весь экран отдан окнам.
+ * Правая кнопка мыши работает только там, где у неё есть смысл: пустой рабочий стол, файлы, виджеты, «Насест».
  */
 export function Desktop() {
   const os = useOs();
@@ -65,10 +68,22 @@ export function Desktop() {
     return () => clearTimeout(id);
   }, [os.prefs.userName]);
   useLoadService();
+  // испытания: дошли до рабочего стола; разгон; без сети. Полученные испытания попадают в уведомления «Хаба»
+  useEffect(() => {
+    const m = useStore.getState();
+    unlock("boot");
+    if (cpuGhz(m.saved) >= 5 && !m.osUnstable) unlock("oc5");
+    if (!m.saved.lanController) unlock("offline");
+    return onQuest((q) => {
+      const ru = useStore.getState().pending.language === "Русский";
+      const n = { id: Date.now() + Math.random(), app: "quests", title: ru ? "Испытание пройдено" : "Challenge complete", body: q.title[ru ? "ru" : "en"], time: Date.now() };
+      useOs.setState((s) => ({ notices: [n, ...s.notices].slice(0, 30) }));
+    });
+  }, []);
 
   return (
     <div
-      className={"desktop" + (os.panel === "overview" ? " overview" : "") + (isLight(os.prefs.theme) ? " light" : "")}
+      className={"desktop" + (os.panel === "overview" ? " overview" : "") + (isLight(os.prefs.theme) ? " light" : "") + (os.panel === "nest" ? " nesting" : "")}
       onPointerDown={() => { os.dismiss(); setSel(null); useOs.setState({ deskFocus: true }); }}
       onContextMenu={(e) => {
         // системное меню браузера не показываем нигде, кроме текстовых полей
@@ -120,16 +135,18 @@ export function Desktop() {
         <Window key={w.id} win={w} active={top?.id === w.id && !os.deskFocus} />
       ))}
 
-      <Dock />
-      <MenuBar />
+      <Perch />
+      <Hub />
+      <Toasts />
       <WidgetGallery />
-      <Launchpad />
-      <Spotlight />
+      <Nest />
+      <Swoop />
       <AboutPanel />
       <ShortcutsPanel />
       <AppSwitcher />
       <WelcomePanel />
       <ContextMenuLayer />
+      <div className={"night-light" + (os.prefs.nightLight ? " on" : "")} />
       <div className="brightness" style={{ opacity: 1 - os.brightness }} />
     </div>
   );

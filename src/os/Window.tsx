@@ -1,11 +1,12 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { useLang } from "../machine/store";
-import { MENUBAR_H, SCREEN_W, WORK, overviewLayout, useOs, visibleWindows, type Win } from "./osStore";
+import { WORK_TOP, SCREEN_W, WORK, overviewLayout, useOs, visibleWindows, type MenuItem, type Win } from "./osStore";
 import { APP_META } from "./apps/meta";
 import { APP_COMPONENTS } from "./apps";
 import { stageScale } from "./util";
 import { AppIcon } from "./AppIcon";
 import { HOME, TRASH, nameOf } from "./fs";
+import { cmd } from "./commands";
 
 const MIN_W = 380;
 const MIN_H = 240;
@@ -22,16 +23,17 @@ const geometry = (s: Snap) =>
       : { x: SCREEN_W / 2, y: WORK.top, w: SCREEN_W / 2, h: WORK.h };
 
 /**
- * Окно в стиле macOS: «светофор» слева, заголовок по центру.
+ * Окно Kestrel: тонкая рамка, значок и заголовок слева, справа — «пилюля» управления
+ * (меню окна, свернуть, развернуть, закрыть). У активного окна — полоска акцента сверху.
  * Перетаскивание за заголовок, прилипание к краям с подсказкой, изменение размера,
- * анимации появления, закрытия и сворачивания в док.
+ * анимации появления, закрытия и сворачивания на «Насест».
  */
 export function Window({ win, active }: { win: Win; active: boolean }) {
   const os = useOs();
-  const { lang } = useLang();
+  const { lang, t } = useLang();
   const meta = APP_META[win.app];
   const user = useOs((s) => s.prefs.userName);
-  // заголовок: у Finder — папка, у TextEdit — имя файла
+  // заголовок: у «Файлов» — папка, у редактора — имя файла
   const title = win.arg === undefined ? meta.title[lang]
     : win.arg === HOME ? user : win.arg === TRASH ? (lang === "ru" ? "Корзина" : "Trash") : win.arg === "disk" ? "Kestrel HD" : nameOf(win.arg);
   const Body = APP_COMPONENTS[win.app];
@@ -50,10 +52,10 @@ export function Window({ win, active }: { win: Win; active: boolean }) {
     ? `translate(${cell.x - g.x}px, ${cell.y - g.y}px) scale(${cell.w / g.w})`
     : undefined;
 
-  // сворачивание «джинном»: окно втягивается в свою иконку в доке и возвращается из неё
+  // сворачивание: окно улетает в свою иконку на «Насесте» и возвращается из неё
   useLayoutEffect(() => {
     if (win.phase !== "minimizing" && win.phase !== "restoring") return;
-    const icon = document.querySelector(`.dock [data-app="${win.app}"]`);
+    const icon = document.querySelector(`.perch [data-app="${win.app}"]`) ?? document.querySelector(".perch-nest");
     const node = el.current;
     if (!icon || !node) return;
     const { k, left, top } = stageScale();
@@ -69,17 +71,17 @@ export function Window({ win, active }: { win: Win; active: boolean }) {
     return { px: (e.clientX - left) / k, py: (e.clientY - top) / k };
   };
   const snapAt = (px: number, py: number): Snap =>
-    px <= EDGE ? "left" : px >= SCREEN_W - EDGE ? "right" : py <= MENUBAR_H + 2 ? "max" : null;
+    px <= EDGE ? "left" : px >= SCREEN_W - EDGE ? "right" : py <= WORK_TOP + 2 ? "max" : null;
 
   const onTitleDown = (e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest(".traffic") || e.button !== 0) return;
+    if ((e.target as HTMLElement).closest(".win-ctl") || e.button !== 0) return;
     os.focus(win.id);
     let { x, y } = win;
     if (win.max || win.snap) {
       // оторвать развёрнутое окно: оно встаёт под курсор в обычном размере
       const { px, py } = toStage(e);
       x = px - win.w / 2;
-      y = Math.max(MENUBAR_H, py - 20);
+      y = Math.max(WORK_TOP, py - 20);
       os.update(win.id, { max: false, snap: null, x, y });
     }
     drag.current = { px: e.clientX, py: e.clientY, x, y };
@@ -91,7 +93,7 @@ export function Window({ win, active }: { win: Win; active: boolean }) {
     const { k } = stageScale();
     os.update(win.id, {
       x: d.x + (e.clientX - d.px) / k,
-      y: Math.max(MENUBAR_H, Math.min(WORK.top + WORK.h - 40, d.y + (e.clientY - d.py) / k)),
+      y: Math.max(WORK_TOP, Math.min(WORK.top + WORK.h - 40, d.y + (e.clientY - d.py) / k)),
     });
     const { px, py } = toStage(e);
     setHint(fixed ? null : snapAt(px, py));
@@ -127,6 +129,29 @@ export function Window({ win, active }: { win: Win; active: boolean }) {
     <div className={"rs rs-" + dir} onPointerDown={onResizeDown(dir)} onPointerMove={onResizeMove} onPointerUp={onResizeUp} />
   );
 
+  /** Меню окна: то, что раньше было в строке меню, теперь живёт рядом с окном. */
+  const windowMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const { k, left, top } = stageScale();
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const items: MenuItem[] = [
+      ...(!meta.single ? [{ label: t("New Window", "Новое окно"), run: () => { os.focus(win.id); cmd.newWindow(); }, shortcut: "Alt+N" } as MenuItem] : []),
+      { label: win.max ? t("Restore Size", "Обычный размер") : t("Full Size", "Во весь экран"), run: () => os.toggleMax(win.id), disabled: fixed, shortcut: "Alt+Enter" },
+      { label: t("Left Half", "Левая половина"), run: () => os.snap(win.id, "left"), disabled: fixed },
+      { label: t("Right Half", "Правая половина"), run: () => os.snap(win.id, "right"), disabled: fixed },
+      "sep",
+      ...Array.from({ length: os.spaces }, (_, i): MenuItem => ({
+        label: t(`Move to Desktop ${i + 1}`, `На рабочий стол ${i + 1}`), run: () => os.moveToSpace(win.id, i), check: win.space === i, disabled: win.space === i,
+      })),
+      "sep",
+      { label: t(`About ${meta.title.en}`, `О программе «${meta.title.ru}»`), run: () => cmd.about(win.app) },
+      { label: t("Minimize", "Свернуть"), run: () => os.minimize(win.id), shortcut: "Alt+M" },
+      { label: t("Close Window", "Закрыть окно"), run: () => os.close(win.id), shortcut: "Alt+W" },
+      { label: t("Quit", "Завершить"), run: () => os.quit(win.app), shortcut: "Alt+Q", danger: true },
+    ];
+    os.openCtx({ x: (r.right - left) / k - 290, y: (r.bottom - top) / k + 6, items });
+  };
+
   const slide = os.spaceDir === 1 ? "from-right" : os.spaceDir === -1 ? "from-left" : null;
   const cls = ["win", active && "active", (win.max || win.snap) && "docked", win.anim && "anim", win.phase, overview && "in-overview", !win.phase && slide]
     .filter(Boolean).join(" ");
@@ -142,18 +167,21 @@ export function Window({ win, active }: { win: Win; active: boolean }) {
       >
         {overview && <div className="ov-catch" title={title} />}
         <div className="win-title" onPointerDown={onTitleDown} onPointerMove={onTitleMove} onPointerUp={onTitleUp} onDoubleClick={() => !fixed && os.toggleMax(win.id)}>
-          <div className="traffic">
-            <button className="tl tl-close" onClick={() => os.close(win.id)} aria-label="Close">
-              <svg viewBox="0 0 12 12"><path d="M3.5 3.5l5 5M8.5 3.5l-5 5" /></svg>
+          <span className="win-name"><AppIcon name={meta.icon} size={22} /><span>{title}</span></span>
+          <div className="win-ctl" onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+            <button className="wc wc-menu" onClick={windowMenu} aria-label={t("Window menu", "Меню окна")}>
+              <svg viewBox="0 0 16 16"><circle cx="3.5" cy="8" r="1.2" /><circle cx="8" cy="8" r="1.2" /><circle cx="12.5" cy="8" r="1.2" /></svg>
             </button>
-            <button className="tl tl-min" onClick={() => os.minimize(win.id)} aria-label="Minimize">
-              <svg viewBox="0 0 12 12"><path d="M2.5 6h7" /></svg>
+            <button className="wc wc-min" onClick={() => os.minimize(win.id)} aria-label={t("Minimize", "Свернуть")}>
+              <svg viewBox="0 0 16 16"><path d="M4 7l4 4 4-4" /></svg>
             </button>
-            <button className="tl tl-zoom" disabled={fixed} onClick={() => os.toggleMax(win.id)} aria-label="Zoom">
-              <svg viewBox="0 0 12 12"><path className="fill" d="M3.2 7.6 7.6 3.2H3.2zM8.8 4.4 4.4 8.8h4.4z" /></svg>
+            <button className="wc wc-max" disabled={fixed} onClick={() => os.toggleMax(win.id)} aria-label={t("Full size", "Во весь экран")}>
+              <svg viewBox="0 0 16 16">{win.max || win.snap ? <path d="M6 3v3H3M10 13v-3h3M13 6h-3V3M3 10h3v3" /> : <path d="M3 6.5V3h3.5M13 9.5V13H9.5M9.5 3H13v3.5M6.5 13H3V9.5" />}</svg>
+            </button>
+            <button className="wc wc-close" onClick={() => os.close(win.id)} aria-label={t("Close", "Закрыть")}>
+              <svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" /></svg>
             </button>
           </div>
-          <span className="win-name"><AppIcon name={meta.icon} size={20} />{title}</span>
         </div>
         <div className="win-body">
           <Body winId={win.id} />

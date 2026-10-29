@@ -1,0 +1,22 @@
+/* «Испытания» */
+.quests { height: 100%; overflow: auto; padding: 22px 26px 26px; }
+.qs-head { display: flex; align-items: center; gap: 22px; margin-bottom: 18px; }
+.qs-head h2 { margin: 0 0 4px; font-size: 26px; }
+.qs-head p { margin: 0; color: var(--text-2); font-size: 15px; line-height: 1.4; max-width: 520px; }
+.qs-head .set-btn { margin-left: auto; align-self: flex-start; }
+.qs-ring { flex: none; }
+.qs-track { fill: none; stroke: rgba(var(--fg), .1); stroke-width: 8; }
+.qs-arc { fill: none; stroke: #facc15; stroke-width: 8; stroke-linecap: round; stroke-dasharray: 263.9; transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset 1s var(--ease); filter: drop-shadow(0 0 6px rgba(250, 204, 21, .5)); }
+.qs-num { font-size: 30px; font-weight: 800; text-anchor: middle; dominant-baseline: middle; fill: var(--text); font-family: var(--font); }
+.qs-of { font-size: 12px; font-weight: 700; text-anchor: middle; fill: var(--text-2); font-family: var(--font); }
+.qs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.qs-card { display: flex; gap: 14px; padding: 14px; border-radius: 18px; background: rgba(var(--fg), .05); box-shadow: inset 0 0 0 1px rgba(var(--fg), .05); animation: page-in .4s var(--ease) both; }
+.qs-card.done { background: linear-gradient(135deg, rgba(250, 204, 21, .14), rgba(250, 204, 21, .03)); box-shadow: inset 0 0 0 1px rgba(250, 204, 21, .3); }
+.qs-badge { width: 46px; height: 46px; flex: none; border-radius: 15px; display: flex; align-items: center; justify-content: center; background: rgba(var(--fg), .08); color: var(--text-2); }
+.qs-card.done .qs-badge { background: linear-gradient(140deg, #fde047, #ca8a04); color: #422006; box-shadow: 0 6px 18px rgba(250, 204, 21, .35); }
+.qs-badge svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.qs-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.qs-text b { font-size: 16px; }
+.qs-text span { font-size: 14px; color: var(--text); opacity: .85; }
+.qs-text small { margin-top: 4px; font-size: 12.5px; color: var(--text-2); }
+.qs-card.done .qs-text small { color: #eab308; font-weight: 700; }

@@ -9,6 +9,7 @@ import { useNow, useTimeFormat } from "./util";
 import { WallpaperArt } from "./Wallpaper";
 import { currentUser, listUsers, peekPrefs } from "./users";
 import { FW_LATEST, flashFirmware } from "../machine/hardware";
+import { unlock } from "../machine/quests";
 
 // Настройки BIOS, которые ОС «замечает» при загрузке.
 const HW_KEYS = ["virtualization", "hdAudio", "lanController", "usbStorage", "xmp", "cpuRatio", "smt", "secureBoot", "ftpm", "sataMode"];
@@ -45,7 +46,7 @@ function bootStatuses(c: Config, last: string, t: (en: string, ru: string) => st
 
 const STATUS_MS = 1100;
 
-/** Экран старта: логотип со свечением, кольцо загрузки, статусы. Нестабильный разгон роняет систему. */
+/** Экран старта: логотип рисуется линией, крыло «взлетает», под ним бегущая полоса и статусы. Нестабильный разгон роняет систему. */
 export function Splash() {
   const { t } = useLang();
   const [statuses] = useState(() => {
@@ -70,11 +71,8 @@ export function Splash() {
 
   return (
     <div className="os-boot fade-in">
-      <div className="boot-glow"><OsLogo size={150} /></div>
-      <svg className="ring" viewBox="0 0 48 48" width="48" height="48">
-        <circle cx="24" cy="24" r="20" className="ring-track" />
-        <circle cx="24" cy="24" r="20" className="ring-arc" />
-      </svg>
+      <div className="boot-logo"><OsLogo size={150} /></div>
+      <div className="boot-line"><i /></div>
       <div className="boot-status">{statuses.length > 0 && <span key={idx}>{statuses[idx]}</span>}</div>
     </div>
   );
@@ -149,7 +147,7 @@ function LockPower({ onSleep }: { onSleep: () => void }) {
 const UNLOCK_MS = 520;
 
 /**
- * Экран блокировки: часы и капсулы сверху, блок входа снизу, питание в углу.
+ * Экран блокировки: крупные часы и капсулы состояния слева, карточка входа справа, питание в углу.
  * Неверный пароль — покачивание поля и подсказка; верный — элементы растворяются.
  */
 export function LockScreen() {
@@ -258,7 +256,7 @@ export function LockScreen() {
   );
 }
 
-/** Сбой ядра из-за нестабильного разгона — как паника ядра на Mac: тёмный экран и перезагрузка. */
+/** Сбой ядра из-за нестабильного разгона: тёмный экран, причина, восстановление и перезагрузка. */
 const CRASH_RESTART_S = 12;
 
 export function Crash() {
@@ -266,6 +264,7 @@ export function Crash() {
   const [show, setShow] = useState(false);
   const [left, setLeft] = useState(CRASH_RESTART_S);
   useEffect(() => {
+    unlock("crash");
     const a = window.setTimeout(() => setShow(true), 400);
     const b = window.setInterval(() => setLeft((n) => n - 1), 1000);
     return () => { clearTimeout(a); clearInterval(b); };
@@ -321,10 +320,8 @@ export function Leaving() {
   const text = kind === "shutdown" ? t("Shutting down", "Завершение работы") : t("Restarting", "Перезагрузка");
   return (
     <div className="os-boot fade-in">
-      <svg className="ring" viewBox="0 0 48 48" width="48" height="48">
-        <circle cx="24" cy="24" r="20" className="ring-track" />
-        <circle cx="24" cy="24" r="20" className="ring-arc" />
-      </svg>
+      <OsLogo size={96} />
+      <div className="boot-line"><i /></div>
       <div className="os-leaving">{text}</div>
     </div>
   );

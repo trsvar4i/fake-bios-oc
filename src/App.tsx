@@ -8,6 +8,7 @@ import { PowerScreen } from "./bios/post/PowerScreen";
 import { Os } from "./os/Os";
 import { Tour } from "./Tour";
 import { TouchLayer } from "./Touch";
+import { QuestToast } from "./QuestToast";
 
 const STAGE_W = 1920;
 const STAGE_H = 1080;
@@ -55,6 +56,7 @@ export function App() {
       {phase === "os" && <Os />}
       {phase === "off" && <Tour />}
       <Dialog />
+      <QuestToast />
     </Stage>
   );
 }
