@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore, useLang } from "../machine/store";
 import type { Config } from "../machine/params";
+import { readings, tempClass } from "../machine/sensors";
 import { useOs } from "./osStore";
-import { playOs } from "./power";
+import { osPower, playOs } from "./power";
 import { OsLogo } from "./AppIcon";
 import { useNow } from "./util";
 
@@ -76,44 +77,157 @@ export function Splash() {
   );
 }
 
-/** Экран блокировки: часы → по клику или клавише форма входа. */
+/** Капсулы под часами: короткий статус системы по настройкам BIOS и живой температуре. */
+function LockWidgets() {
+  const { t } = useLang();
+  const saved = useStore((s) => s.saved);
+  const temp = useStore((s) => readings(s.saved, s.thermal).temp);
+  const issues = [
+    !saved.lanController && t("No network", "Нет сети"),
+    !saved.hdAudio && t("No sound", "Нет звука"),
+    temp >= 85 && t("CPU is running hot", "Процессор перегревается"),
+  ].filter(Boolean) as string[];
+  return (
+    <div className="lock-widgets">
+      <div className={"capsule glass" + (issues.length ? " warn" : "")}>
+        <i className="cap-dot" />
+        {issues.length ? issues.join(" · ") : t("All systems running fine", "Все системы работают отлично")}
+      </div>
+      <div className="capsule glass">
+        <svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1.5" /><path d="M10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4" /></svg>
+        {t("CPU", "Процессор")} <b className={tempClass(temp)}>{Math.round(temp)}°C</b>
+      </div>
+    </div>
+  );
+}
+
+/** Меню питания в углу экрана блокировки. */
+function LockPower({ onSleep }: { onSleep: () => void }) {
+  const { t } = useLang();
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="lock-power" onClick={(e) => e.stopPropagation()}>
+      {open && (
+        <div className="lock-power-menu glass">
+          <button onClick={onSleep}>{t("Sleep", "Сон")}</button>
+          <button onClick={osPower.restart}>{t("Restart", "Перезагрузка")}</button>
+          <button onClick={osPower.shutdown}>{t("Shut down", "Выключение")}</button>
+        </div>
+      )}
+      <button className={"lock-round glass" + (open ? " on" : "")} onClick={() => setOpen(!open)} title={t("Power", "Питание")}>
+        <svg viewBox="0 0 24 24"><path d="M12 3v8M6.5 6.5a8 8 0 1 0 11 0" /></svg>
+      </button>
+    </div>
+  );
+}
+
+const UNLOCK_MS = 520;
+
+/**
+ * Экран блокировки: часы и капсулы сверху, блок входа снизу, питание в углу.
+ * Неверный пароль — покачивание поля и подсказка; верный — элементы растворяются.
+ */
 export function LockScreen() {
   const { t, lang } = useLang();
   const prefs = useOs((s) => s.prefs);
   const [login, setLogin] = useState(false);
+  const [pw, setPw] = useState("");
+  const [wrong, setWrong] = useState(0);
+  const [shake, setShake] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
+  const [asleep, setAsleep] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
   const now = useNow();
   const locale = lang === "ru" ? "ru-RU" : "en-GB";
+  const hasPw = prefs.password !== "";
 
-  const signIn = () => {
+  const unlock = () => {
+    setUnlocking(true);
     playOs("startup");
-    useOs.getState().setStage("desktop");
+    window.setTimeout(() => useOs.getState().setStage("desktop"), UNLOCK_MS);
   };
+
+  const submit = () => {
+    if (unlocking) return;
+    if (!hasPw || pw === prefs.password) return unlock();
+    playOs("error");
+    setWrong((n) => n + 1);
+    setShake(true);
+    setPw("");
+  };
+
+  const back = () => { setLogin(false); setPw(""); };
+  const sleep = () => { setAsleep(true); back(); };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!login) { setLogin(true); return; }
-      if (e.key === "Enter") signIn();
-      if (e.key === "Escape") setLogin(false);
+      if (unlocking) return;
+      if (asleep) { setAsleep(false); return; }
+      if (!login) {
+        setLogin(true);
+        // первая буква не теряется: она сразу попадает в поле пароля
+        if (hasPw && e.key.length === 1) { setPw(e.key); e.preventDefault(); }
+        return;
+      }
+      if (e.key === "Escape") back();
+      else if (e.key === "Enter" && !hasPw) submit();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [login]);
+  }, [login, asleep, unlocking, hasPw, pw]);
+
+  useEffect(() => { if (login) input.current?.focus(); }, [login]);
 
   return (
-    <div className={"lock wp-" + prefs.wallpaper + (login ? " blur" : "")} onClick={() => !login && setLogin(true)}>
-      {!login ? (
-        <div className="lock-clock">
-          <div className="lc-time">{now.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}</div>
-          <div className="lc-date">{now.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" })}</div>
-        </div>
-      ) : (
-        <div className="login">
-          <div className="avatar big">{prefs.userName.slice(0, 1).toUpperCase()}</div>
-          <div className="login-name">{prefs.userName}</div>
-          <button className="login-btn" onClick={signIn}>{t("Sign in", "Войти")}</button>
-        </div>
-      )}
-      <div className="lock-hint">{!login ? t("Click or press any key to unlock", "Щёлкните или нажмите любую клавишу") : t("Enter — sign in, Esc — back", "Enter — войти, Esc — назад")}</div>
+    <div
+      className={"lock wp-" + prefs.wallpaper + (login ? " blur" : "") + (unlocking ? " unlocking" : "")}
+      onClick={() => !login && setLogin(true)}
+    >
+      <div className="lock-top">
+        <div className="lc-date">{now.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" })}</div>
+        <div className="lc-time">{now.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}</div>
+        <LockWidgets />
+      </div>
+
+      <div className={"lock-bottom" + (login ? " open" : "")} onClick={(e) => login && e.stopPropagation()}>
+        <div className="avatar big">{prefs.userName.slice(0, 1).toUpperCase()}</div>
+        <div className="login-name">{prefs.userName}</div>
+        {!login ? (
+          <div className="lock-hint">{t("Click or press any key to unlock", "Щёлкните или нажмите любую клавишу")}</div>
+        ) : hasPw ? (
+          <>
+            <form
+              className={"pw-field glass" + (shake ? " shake" : "")}
+              onAnimationEnd={() => setShake(false)}
+              onSubmit={(e) => { e.preventDefault(); submit(); }}
+            >
+              <input
+                ref={input}
+                type="password"
+                value={pw}
+                placeholder={t("Password", "Пароль")}
+                onChange={(e) => setPw(e.target.value)}
+              />
+              <button type="submit" className="pw-go" disabled={!pw} title={t("Sign in", "Войти")}>
+                <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+              </button>
+            </form>
+            <div className="pw-hint">
+              {wrong > 0 && (
+                <span key={wrong}>
+                  {t("Wrong password.", "Неверный пароль.")}
+                  {prefs.passwordHint && <> {t("Hint", "Подсказка")}: «{prefs.passwordHint}»</>}
+                </span>
+              )}
+            </div>
+          </>
+        ) : (
+          <button className="login-btn" onClick={submit}>{t("Sign in", "Войти")}</button>
+        )}
+      </div>
+
+      <LockPower onSleep={sleep} />
+      {asleep && <div className="sleep" onClick={(e) => { e.stopPropagation(); setAsleep(false); }} />}
     </div>
   );
 }

@@ -16,3 +16,17 @@ export function useNow() {
   }, []);
   return now;
 }
+
+/**
+ * Монтирование с анимацией ухода: после закрытия элемент ещё `ms` живёт с флагом closing,
+ * чтобы успела проиграться CSS-анимация исчезновения.
+ */
+export function usePresence(open: boolean, ms = 200): { mounted: boolean; closing: boolean } {
+  const [mounted, setMounted] = useState(open);
+  useEffect(() => {
+    if (open) { setMounted(true); return; }
+    const id = window.setTimeout(() => setMounted(false), ms);
+    return () => clearTimeout(id);
+  }, [open, ms]);
+  return { mounted: open || mounted, closing: !open && mounted };
+}

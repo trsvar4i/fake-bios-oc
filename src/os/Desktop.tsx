@@ -1,149 +1,97 @@
-import { useState } from "react";
-import { useStore, useLang } from "../machine/store";
+import { useEffect, useState } from "react";
+import { useLang } from "../machine/store";
 import { DEVICES } from "../machine/hardware";
-import { useMuted, sound } from "../machine/audio";
 import { useOs, topWindow } from "./osStore";
-import { APP_META } from "./apps/meta";
-import { AppIcon, OsLogo } from "./AppIcon";
+import { AppIcon } from "./AppIcon";
 import { Window } from "./Window";
-import { osPower } from "./power";
-import { stageScale, useNow } from "./util";
+import { MenuBar } from "./MenuBar";
+import { Dock } from "./Dock";
+import { Launchpad, Spotlight } from "./Overlays";
+import { stageScale, usePresence } from "./util";
 
+/** Рабочий стол в духе macOS: строка меню, окна, док, значок диска справа, Launchpad и Spotlight. */
 export function Desktop() {
   const os = useOs();
-  const { lang, t } = useLang();
+  const { t } = useLang();
   const [ctx, setCtx] = useState<{ x: number; y: number } | null>(null);
+  const [diskSel, setDiskSel] = useState(false);
   const top = topWindow(os.windows);
+
+  // Ctrl+Space — Spotlight, Esc закрывает панели и меню
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === "Space" && e.ctrlKey) { e.preventDefault(); os.setPanel("spotlight"); }
+      else if (e.key === "Escape") { os.dismiss(); setCtx(null); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <div
-      className={"desktop wp-" + os.prefs.wallpaper}
-      onPointerDown={() => { os.toggleStart(false); setCtx(null); useOs.setState({ selectedIcon: null }); }}
+      className="desktop"
+      onPointerDown={() => { os.dismiss(); setCtx(null); setDiskSel(false); }}
       onContextMenu={(e) => {
         e.preventDefault();
         const { k, left, top: tp } = stageScale();
         setCtx({ x: (e.clientX - left) / k, y: (e.clientY - tp) / k });
       }}
     >
-      <div className="icons">
-        {Object.values(APP_META).map((m) => (
-          <div
-            key={m.id}
-            className={"dicon" + (os.selectedIcon === m.id ? " sel" : "")}
-            onPointerDown={(e) => { e.stopPropagation(); setCtx(null); os.toggleStart(false); useOs.setState({ selectedIcon: m.id }); }}
-            onDoubleClick={() => os.open(m.id)}
-          >
-            <AppIcon name={m.icon} size={60} />
-            <span>{m.title[lang]}</span>
-          </div>
-        ))}
+      <Wallpaper id={os.prefs.wallpaper} />
+      <div
+        className={"disk-icon" + (diskSel ? " sel" : "")}
+        onPointerDown={(e) => { e.stopPropagation(); os.dismiss(); setCtx(null); setDiskSel(true); }}
+        onDoubleClick={() => os.open("thispc")}
+      >
+        <AppIcon name="disk" size={76} />
+        <span>{DEVICES.OS.short}</span>
       </div>
 
       {os.windows.filter((w) => !w.min).map((w) => (
         <Window key={w.id} win={w} active={top?.id === w.id} />
       ))}
 
-      {ctx && (
-        <div className="ctxmenu" style={{ left: ctx.x, top: ctx.y }} onPointerDown={(e) => e.stopPropagation()}>
-          <button onClick={() => { os.open("terminal"); setCtx(null); }}>{t("Open Terminal", "Открыть терминал")}</button>
-          <button onClick={() => { os.open("settings"); setCtx(null); }}>{t("Personalize", "Персонализация")}</button>
-          <button onClick={() => { os.open("thispc"); setCtx(null); }}>{t("System properties", "Свойства системы")}</button>
-        </div>
-      )}
+      <ContextMenu at={ctx} onClose={() => setCtx(null)} items={[
+        [t("Change Wallpaper…", "Изменить обои…"), () => os.open("settings")],
+        [t("Open Terminal", "Открыть Терминал"), () => os.open("terminal")],
+        [t("New Note", "Новая заметка"), () => os.open("notes")],
+        [t("About This PC", "Об этом компьютере"), () => os.open("thispc")],
+      ]} />
 
-      <StartMenu />
-      <Taskbar />
+      <Dock />
+      <MenuBar />
+      <Launchpad />
+      <Spotlight />
+      <div className="dim" style={{ opacity: 1 - os.brightness }} />
     </div>
   );
 }
 
-function Taskbar() {
-  const os = useOs();
-  const saved = useStore((s) => s.saved);
-  const { lang, t } = useLang();
-  const muted = useMuted();
-  const now = useNow();
-  const top = topWindow(os.windows);
-  const locale = lang === "ru" ? "ru-RU" : "en-GB";
+/** Обои с плавной сменой: новый слой проявляется поверх старого. */
+function Wallpaper({ id }: { id: string }) {
+  const [layers, setLayers] = useState([id]);
+  useEffect(() => {
+    if (layers[layers.length - 1] === id) return;
+    setLayers((l) => [l[l.length - 1], id]);
+    const t = window.setTimeout(() => setLayers([id]), 750);
+    return () => clearTimeout(t);
+  }, [id]);
+  return <>{layers.map((w, i) => <div key={w} className={"wallpaper wp-" + w + (i > 0 ? " next" : "")} />)}</>;
+}
 
+function ContextMenu({ at, items, onClose }: { at: { x: number; y: number } | null; items: [string, () => void][]; onClose: () => void }) {
+  const [pos, setPos] = useState(at);
+  useEffect(() => { if (at) setPos(at); }, [at]);
+  const { mounted, closing } = usePresence(!!at, 160);
+  if (!mounted || !pos) return null;
   return (
-    <div className="taskbar" onPointerDown={(e) => e.stopPropagation()}>
-      <button className={"tb-start" + (os.startOpen ? " on" : "")} onClick={() => os.toggleStart()}>
-        <OsLogo size={34} />
-      </button>
-      <div className="tb-apps">
-        {os.windows.map((w) => (
-          <button
-            key={w.id}
-            className={"tb-app" + (top?.id === w.id ? " active" : "") + (w.min ? " min" : "")}
-            onClick={() => (top?.id === w.id ? os.minimize(w.id) : os.focus(w.id))}
-          >
-            <AppIcon name={APP_META[w.app].icon} size={30} />
-            <span>{APP_META[w.app].title[lang]}</span>
-          </button>
-        ))}
-      </div>
-      <div className="tb-tray">
-        <span className={"tray-ico" + (saved.lanController ? "" : " off")}>
-          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1" /><path d="M8 20h8M12 16v4" />{!saved.lanController && <path d="M4 3l16 18" />}</svg>
-          <span>{saved.lanController ? t("Ethernet", "Ethernet") : t("No network", "Нет сети")}</span>
-        </span>
-        <button
-          className={"tray-ico" + (!saved.hdAudio || muted ? " off" : "")}
-          onClick={() => saved.hdAudio && sound.setMuted(!muted)}
-        >
-          <svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" />{saved.hdAudio && !muted ? <path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11" /> : <path d="M16 9l5 6M21 9l-5 6" />}</svg>
-          <span>{saved.hdAudio ? (muted ? t("Muted", "Без звука") : t("Sound", "Звук")) : t("No audio device", "Нет аудиоустройства")}</span>
+    <div className={"ctxmenu dropdown" + (closing ? " closing" : "")} style={{ left: pos.x, top: pos.y }} onPointerDown={(e) => e.stopPropagation()}>
+      {items.map(([label, run]) => (
+        <button key={label} className="dd-item" onClick={() => { onClose(); run(); }}>
+          <span className="dd-check" />
+          {label}
         </button>
-        <div className="tb-clock">
-          <div>{now.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}</div>
-          <div>{now.toLocaleDateString(locale)}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StartMenu() {
-  const os = useOs();
-  const { lang, t } = useLang();
-  const [power, setPower] = useState(false);
-  if (!os.startOpen) return null;
-
-  return (
-    <div className="start" onPointerDown={(e) => e.stopPropagation()}>
-      <div className="start-head">
-        <OsLogo size={30} />
-        Kestrel OS
-      </div>
-      <div className="start-apps">
-        {Object.values(APP_META).map((m) => (
-          <button key={m.id} className="start-app" onClick={() => os.open(m.id)}>
-            <AppIcon name={m.icon} size={44} />
-            <span>{m.title[lang]}</span>
-          </button>
-        ))}
-      </div>
-      <div className="start-foot">
-        <div className="start-user">
-          <span className="avatar">{os.prefs.userName.slice(0, 1).toUpperCase()}</span>
-          {os.prefs.userName}
-        </div>
-        <div className="start-power">
-          <button className="pwr-btn" onClick={() => setPower(!power)}>
-            <svg viewBox="0 0 24 24"><path d="M12 3v8M6.5 6.5a8 8 0 1 0 11 0" /></svg>
-          </button>
-          {power && (
-            <div className="power-menu">
-              <button onClick={osPower.lock}>{t("Lock", "Заблокировать")}</button>
-              <button onClick={osPower.restartToFirmware}>{t("Restart to UEFI (BIOS)", "Перезагрузить в UEFI (BIOS)")}</button>
-              <button onClick={osPower.restart}>{t("Restart", "Перезагрузка")}</button>
-              <button onClick={osPower.shutdown}>{t("Shut down", "Завершение работы")}</button>
-            </div>
-          )}
-        </div>
-      </div>
-      <div className="start-boot">{t("Booted from", "Загружено с")}: {DEVICES.OS.short}</div>
+      ))}
     </div>
   );
 }

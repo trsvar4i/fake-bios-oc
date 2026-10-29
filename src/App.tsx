@@ -6,7 +6,6 @@ import { Post } from "./bios/post/Post";
 import { BootScreen } from "./bios/post/BootScreen";
 import { PowerScreen } from "./bios/post/PowerScreen";
 import { Os } from "./os/Os";
-import { sound } from "./machine/audio";
 
 const STAGE_W = 1920;
 const STAGE_H = 1080;
@@ -39,7 +38,6 @@ export function App() {
       const now = performance.now();
       const s = useStore.getState();
       s.tick((now - last) / 1000);
-      sound.setFan(useStore.getState().thermal.rpm);
       last = now;
     }, 200);
     return () => clearInterval(id);

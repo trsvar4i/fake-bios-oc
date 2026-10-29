@@ -23,7 +23,7 @@ export function Settings() {
           <button key={id} className={page === id ? "on" : ""} onClick={() => setPage(id)}>{name}</button>
         ))}
       </nav>
-      <div className="set-page">
+      <div className="set-page" key={page}>
         {page === "personal" && <Personal />}
         {page === "account" && <Account />}
         {page === "sound" && <Sound />}
@@ -62,7 +62,58 @@ function Account() {
           <input value={name} maxLength={20} onChange={(e) => useOs.getState().setPref("userName", e.target.value || "User")} />
         </label>
       </div>
-      <p className="set-note">{t("Local account, no password.", "Локальная учётная запись без пароля.")}</p>
+      <Password />
+    </>
+  );
+}
+
+/** Пароль для экрана блокировки. Чтобы сменить или убрать, нужен текущий. */
+function Password() {
+  const { t } = useLang();
+  const prefs = useOs((s) => s.prefs);
+  const has = prefs.password !== "";
+  const [cur, setCur] = useState("");
+  const [next, setNext] = useState("");
+  const [hint, setHint] = useState(prefs.passwordHint);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const apply = (password: string) => {
+    if (has && cur !== prefs.password) return setMsg({ ok: false, text: t("Current password is wrong.", "Текущий пароль неверный.") });
+    if (password && hint && password.toLowerCase().includes(hint.toLowerCase()))
+      return setMsg({ ok: false, text: t("The hint must not contain the password.", "Подсказка не должна содержать пароль.") });
+    const os = useOs.getState();
+    os.setPref("password", password);
+    os.setPref("passwordHint", password ? hint : "");
+    setCur(""); setNext("");
+    if (!password) setHint("");
+    setMsg({ ok: true, text: password ? t("Password saved.", "Пароль сохранён.") : t("Password removed.", "Пароль удалён.") });
+  };
+
+  return (
+    <>
+      <h2 className="set-sub">{t("Password", "Пароль")}</h2>
+      <p className="set-note">
+        {has ? t("The lock screen asks for this password.", "Экран блокировки запрашивает этот пароль.")
+          : t("No password: anyone can sign in with one click.", "Пароля нет: войти можно одним щелчком.")}
+      </p>
+      <form className="set-form" onSubmit={(e) => { e.preventDefault(); if (next) apply(next); }}>
+        {has && (
+          <label>{t("Current password", "Текущий пароль")}
+            <input type="password" value={cur} onChange={(e) => { setCur(e.target.value); setMsg(null); }} />
+          </label>
+        )}
+        <label>{has ? t("New password", "Новый пароль") : t("Password", "Пароль")}
+          <input type="password" value={next} maxLength={32} onChange={(e) => { setNext(e.target.value); setMsg(null); }} />
+        </label>
+        <label>{t("Hint (optional)", "Подсказка (необязательно)")}
+          <input value={hint} maxLength={40} onChange={(e) => { setHint(e.target.value); setMsg(null); }} />
+        </label>
+        <div className="set-actions">
+          <button type="submit" className="set-btn primary" disabled={!next}>{has ? t("Change password", "Сменить пароль") : t("Set password", "Задать пароль")}</button>
+          {has && <button type="button" className="set-btn" onClick={() => apply("")}>{t("Remove password", "Убрать пароль")}</button>}
+        </div>
+        {msg && <p className={msg.ok ? "ok" : "crit"}>{msg.text}</p>}
+      </form>
     </>
   );
 }

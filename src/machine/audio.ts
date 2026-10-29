@@ -1,29 +1,28 @@
 // Звуки ПК, синтезированные через Web Audio (без записанных сэмплов):
-// вентиляторы, гул БП, мотор и головки HDD, DVD-привод, PC speaker (POST-бип и сирена перегрева).
+// щелчок питания, головки HDD, DVD-привод, PC speaker (POST-бип и сирена перегрева), звуки ОС.
+// Постоянного фона (шум вентиляторов, гул БП, мотор HDD) нет — только короткие события.
 import { useSyncExternalStore } from "react";
 
 const MUTE_KEY = "kestrel.muted";
+const VOLUME_KEY = "kestrel.volume";
 
 function loadMuted() {
   try { return localStorage.getItem(MUTE_KEY) === "1"; } catch { return false; }
+}
+function loadVolume() {
+  try { const v = Number(localStorage.getItem(VOLUME_KEY) ?? "0.8"); return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.8; } catch { return 0.8; }
 }
 
 class SoundEngine {
   private ctx: AudioContext | null = null;
   private master!: GainNode;
   private noise!: AudioBuffer;
-  private fanGain!: GainNode;
-  private fanFilter!: BiquadFilterNode;
-  private bladeOsc!: OscillatorNode;
-  private bladeGain!: GainNode;
-  private humGain!: GainNode;
-  private hddOsc!: OscillatorNode;
-  private hddGain!: GainNode;
   private powered = false;
-  private spinupUntil = 0;
   private sirenTimer: number | null = null;
   private listeners = new Set<() => void>();
   muted = loadMuted();
+  /** громкость 0…1 (ползунок в пункте управления ОС) */
+  volume = loadVolume();
 
   /** AudioContext можно создать только после действия пользователя — поэтому ПК включается кнопкой. */
   private ensure(): AudioContext | null {
@@ -33,7 +32,7 @@ class SoundEngine {
     const ctx: AudioContext = new AC();
     this.ctx = ctx;
     this.master = ctx.createGain();
-    this.master.gain.value = this.muted ? 0 : 0.7;
+    this.master.gain.value = this.level();
     this.master.connect(ctx.destination);
 
     const len = ctx.sampleRate * 2;
@@ -41,52 +40,7 @@ class SoundEngine {
     const data = this.noise.getChannelData(0);
     for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
 
-    // поток воздуха от вентиляторов
-    this.fanFilter = ctx.createBiquadFilter();
-    this.fanFilter.type = "bandpass";
-    this.fanFilter.Q.value = 0.5;
-    this.fanFilter.frequency.value = 300;
-    const fanLow = ctx.createBiquadFilter();
-    fanLow.type = "lowpass";
-    fanLow.frequency.value = 3500;
-    this.fanGain = ctx.createGain();
-    this.fanGain.gain.value = 0;
-    this.loopNoise().connect(this.fanFilter).connect(fanLow).connect(this.fanGain).connect(this.master);
-
-    // тон лопастей: частота = обороты / 60 × 7 лопастей
-    this.bladeOsc = ctx.createOscillator();
-    this.bladeOsc.type = "triangle";
-    this.bladeOsc.frequency.value = 5;
-    this.bladeGain = ctx.createGain();
-    this.bladeGain.gain.value = 0;
-    this.bladeOsc.connect(this.bladeGain).connect(this.master);
-    this.bladeOsc.start();
-
-    // низкий гул блока питания и корпуса
-    const humFilter = ctx.createBiquadFilter();
-    humFilter.type = "lowpass";
-    humFilter.frequency.value = 140;
-    this.humGain = ctx.createGain();
-    this.humGain.gain.value = 0;
-    this.loopNoise().connect(humFilter).connect(this.humGain).connect(this.master);
-
-    // мотор HDD: 7200 об/мин = 120 Гц
-    this.hddOsc = ctx.createOscillator();
-    this.hddOsc.type = "sine";
-    this.hddOsc.frequency.value = 5;
-    this.hddGain = ctx.createGain();
-    this.hddGain.gain.value = 0;
-    this.hddOsc.connect(this.hddGain).connect(this.master);
-    this.hddOsc.start();
     return ctx;
-  }
-
-  private loopNoise() {
-    const src = this.ctx!.createBufferSource();
-    src.buffer = this.noise;
-    src.loop = true;
-    src.start(0, Math.random() * 1.9);
-    return src;
   }
 
   /** Короткий щелчок: отфильтрованный шум с быстрым затуханием. */
@@ -125,14 +79,8 @@ class SoundEngine {
     void ctx.resume();
     const t = ctx.currentTime;
     this.powered = true;
-    this.spinupUntil = performance.now() + 1800; // при включении вентиляторы на миг выходят на максимум
     this.burst(t, 0.015, 2500, 0.5, "highpass");
     this.thump(t, 70, 0.12, 0.35);
-    this.humGain.gain.setTargetAtTime(0.05, t, 0.2);
-    this.hddOsc.frequency.cancelScheduledValues(t);
-    this.hddOsc.frequency.setValueAtTime(5, t);
-    this.hddOsc.frequency.exponentialRampToValueAtTime(120, t + 4);
-    this.hddGain.gain.setTargetAtTime(0.012, t, 0.8);
   }
 
   powerOff() {
@@ -141,25 +89,6 @@ class SoundEngine {
     this.powered = false;
     this.sirenStop();
     this.burst(t, 0.012, 2500, 0.3, "highpass");
-    this.fanGain.gain.setTargetAtTime(0, t, 0.8);
-    this.bladeGain.gain.setTargetAtTime(0, t, 0.6);
-    this.bladeOsc.frequency.setTargetAtTime(5, t, 0.8);
-    this.humGain.gain.setTargetAtTime(0, t, 0.15);
-    this.hddOsc.frequency.cancelScheduledValues(t);
-    this.hddOsc.frequency.setTargetAtTime(5, t, 1.5);
-    this.hddGain.gain.setTargetAtTime(0, t, 1.2);
-  }
-
-  /** Обновляется каждые 200 мс из тепловой модели. */
-  setFan(rpm: number) {
-    if (!this.ctx || !this.powered) return;
-    const eff = performance.now() < this.spinupUntil ? 2300 : rpm;
-    const x = Math.min(1, eff / 2400);
-    const t = this.ctx.currentTime;
-    this.fanGain.gain.setTargetAtTime(0.03 + 0.5 * x ** 1.7, t, 0.5);
-    this.fanFilter.frequency.setTargetAtTime(250 + 1500 * x, t, 0.5);
-    this.bladeOsc.frequency.setTargetAtTime(Math.max(5, (eff / 60) * 7), t, 0.5);
-    this.bladeGain.gain.setTargetAtTime(0.004 + 0.02 * x, t, 0.5);
   }
 
   /** PC speaker: прямоугольная волна. */
@@ -268,11 +197,23 @@ class SoundEngine {
     }
   }
 
+  private level() { return this.muted ? 0 : 0.7 * this.volume; }
+
+  private apply() {
+    if (this.ctx) this.master.gain.setTargetAtTime(this.level(), this.ctx.currentTime, 0.05);
+    this.listeners.forEach((fn) => fn());
+  }
+
   setMuted(m: boolean) {
     this.muted = m;
     try { localStorage.setItem(MUTE_KEY, m ? "1" : "0"); } catch { /* хранилище недоступно */ }
-    if (this.ctx) this.master.gain.setTargetAtTime(m ? 0 : 0.7, this.ctx.currentTime, 0.05);
-    this.listeners.forEach((fn) => fn());
+    this.apply();
+  }
+
+  setVolume(v: number) {
+    this.volume = Math.min(1, Math.max(0, v));
+    try { localStorage.setItem(VOLUME_KEY, String(this.volume)); } catch { /* хранилище недоступно */ }
+    this.apply();
   }
 
   subscribe(fn: () => void) {
@@ -284,3 +225,4 @@ class SoundEngine {
 export const sound = new SoundEngine();
 
 export const useMuted = () => useSyncExternalStore((cb) => sound.subscribe(cb), () => sound.muted);
+export const useVolume = () => useSyncExternalStore((cb) => sound.subscribe(cb), () => sound.volume);

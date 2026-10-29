@@ -5,6 +5,7 @@ import { useOs } from "./osStore";
 
 /** Звук ОС слышен только при включённом HD Audio. */
 export function playOs(kind: "startup" | "shutdown" | "notify" | "error") {
+  if (kind === "notify" && useOs.getState().dnd) return;
   if (useStore.getState().saved.hdAudio) sound.chime(kind);
 }
 

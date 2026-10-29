@@ -5,6 +5,8 @@ const ICONS: Record<string, { bg: string; path: string }> = {
   notes: { bg: "linear-gradient(135deg,#ffd75e,#f0a500)", path: '<rect x="8" y="6" width="16" height="20" rx="1.5"/><path d="M12 12h8M12 16h8M12 20h5"/>' },
   taskmgr: { bg: "linear-gradient(135deg,#4fd18b,#13894b)", path: '<path d="M5 18h5l3-7 4 12 3-8 2 3h5"/>' },
   vm: { bg: "linear-gradient(135deg,#a77bff,#5b2fd1)", path: '<rect x="5" y="8" width="16" height="12" rx="1.5"/><rect x="11" y="13" width="16" height="12" rx="1.5"/>' },
+  launchpad: { bg: "linear-gradient(135deg,#f5f6fa,#c9ccd6)", path: '<g fill="#5b6275" stroke="none"><rect x="7" y="7" width="5" height="5" rx="1.4"/><rect x="13.5" y="7" width="5" height="5" rx="1.4" fill="#ff6b5b"/><rect x="20" y="7" width="5" height="5" rx="1.4" fill="#ffb340"/><rect x="7" y="13.5" width="5" height="5" rx="1.4" fill="#3fc76d"/><rect x="13.5" y="13.5" width="5" height="5" rx="1.4" fill="#2f8cff"/><rect x="20" y="13.5" width="5" height="5" rx="1.4" fill="#a066ff"/><rect x="7" y="20" width="5" height="5" rx="1.4" fill="#ff5f9e"/><rect x="13.5" y="20" width="5" height="5" rx="1.4" fill="#2fc7c7"/><rect x="20" y="20" width="5" height="5" rx="1.4"/></g>' },
+  disk: { bg: "linear-gradient(180deg,#e9ebf0,#a9aeba)", path: '<g stroke="#4b5263"><rect x="5" y="11" width="22" height="11" rx="2"/><path d="M9 18h2"/></g><circle cx="23" cy="18" r="1" fill="#3fd66d" stroke="none"/>' },
   settings: { bg: "linear-gradient(135deg,#9aa3b5,#4b5263)", path: '<circle cx="16" cy="16" r="4"/><path d="M16 5v4M16 23v4M5 16h4M23 16h4M8.2 8.2l2.8 2.8M21 21l2.8 2.8M8.2 23.8l2.8-2.8M21 11l2.8-2.8"/>' },
 };
 

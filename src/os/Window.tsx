@@ -1,40 +1,71 @@
-import { useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useLang } from "../machine/store";
-import { DESK_H, SCREEN_W, useOs, type Win } from "./osStore";
+import { MENUBAR_H, SCREEN_W, WORK, useOs, type Win } from "./osStore";
 import { APP_META } from "./apps/meta";
 import { APP_COMPONENTS } from "./apps";
-import { AppIcon } from "./AppIcon";
 import { stageScale } from "./util";
 
 const MIN_W = 380;
 const MIN_H = 240;
+/** насколько близко к краю нужно поднести курсор, чтобы окно прилипло */
+const EDGE = 8;
 
-/** Окно: перетаскивание за заголовок, привязка к краям, изменение размера, свернуть/развернуть/закрыть. */
+type Snap = "left" | "right" | "max" | null;
+
+const geometry = (s: Snap) =>
+  s === "max"
+    ? { x: 0, y: WORK.top, w: SCREEN_W, h: WORK.h }
+    : s === "left"
+      ? { x: 0, y: WORK.top, w: SCREEN_W / 2, h: WORK.h }
+      : { x: SCREEN_W / 2, y: WORK.top, w: SCREEN_W / 2, h: WORK.h };
+
+/**
+ * Окно в стиле macOS: «светофор» слева, заголовок по центру.
+ * Перетаскивание за заголовок, прилипание к краям с подсказкой, изменение размера,
+ * анимации появления, закрытия и сворачивания в док.
+ */
 export function Window({ win, active }: { win: Win; active: boolean }) {
   const os = useOs();
   const { lang } = useLang();
   const meta = APP_META[win.app];
   const Body = APP_COMPONENTS[win.app];
+  const el = useRef<HTMLDivElement>(null);
   const drag = useRef<{ px: number; py: number; x: number; y: number } | null>(null);
   const rs = useRef<{ px: number; py: number; w: number; h: number; dir: string } | null>(null);
+  const [hint, setHint] = useState<Snap>(null);
 
-  const g = win.max
-    ? { x: 0, y: 0, w: SCREEN_W, h: DESK_H }
-    : win.snap === "left"
-      ? { x: 0, y: 0, w: SCREEN_W / 2, h: DESK_H }
-      : win.snap === "right"
-        ? { x: SCREEN_W / 2, y: 0, w: SCREEN_W / 2, h: DESK_H }
-        : win;
+  const g = win.max ? geometry("max") : win.snap ? geometry(win.snap) : win;
+
+  // сворачивание «джинном»: окно втягивается в свою иконку в доке и возвращается из неё
+  useLayoutEffect(() => {
+    if (win.phase !== "minimizing" && win.phase !== "restoring") return;
+    const icon = document.querySelector(`.dock [data-app="${win.app}"]`);
+    const node = el.current;
+    if (!icon || !node) return;
+    const { k, left, top } = stageScale();
+    const r = icon.getBoundingClientRect();
+    const ix = (r.left + r.width / 2 - left) / k;
+    const iy = (r.top + r.height / 2 - top) / k;
+    node.style.setProperty("--gx", `${ix - (g.x + g.w / 2)}px`);
+    node.style.setProperty("--gy", `${iy - (g.y + g.h / 2)}px`);
+  }, [win.phase]);
+
+  const toStage = (e: React.PointerEvent) => {
+    const { k, left, top } = stageScale();
+    return { px: (e.clientX - left) / k, py: (e.clientY - top) / k };
+  };
+  const snapAt = (px: number, py: number): Snap =>
+    px <= EDGE ? "left" : px >= SCREEN_W - EDGE ? "right" : py <= MENUBAR_H + 2 ? "max" : null;
 
   const onTitleDown = (e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest(".wbtn") || e.button !== 0) return;
+    if ((e.target as HTMLElement).closest(".traffic") || e.button !== 0) return;
     os.focus(win.id);
-    const { k, left } = stageScale();
     let { x, y } = win;
     if (win.max || win.snap) {
       // оторвать развёрнутое окно: оно встаёт под курсор в обычном размере
-      x = (e.clientX - left) / k - win.w / 2;
-      y = 0;
+      const { px, py } = toStage(e);
+      x = px - win.w / 2;
+      y = Math.max(MENUBAR_H, py - 20);
       os.update(win.id, { max: false, snap: null, x, y });
     }
     drag.current = { px: e.clientX, py: e.clientY, x, y };
@@ -46,18 +77,19 @@ export function Window({ win, active }: { win: Win; active: boolean }) {
     const { k } = stageScale();
     os.update(win.id, {
       x: d.x + (e.clientX - d.px) / k,
-      y: Math.max(0, Math.min(DESK_H - 40, d.y + (e.clientY - d.py) / k)),
+      y: Math.max(MENUBAR_H, Math.min(WORK.top + WORK.h - 40, d.y + (e.clientY - d.py) / k)),
     });
+    const { px, py } = toStage(e);
+    setHint(snapAt(px, py));
   };
   const onTitleUp = (e: React.PointerEvent) => {
     if (!drag.current) return;
     drag.current = null;
-    const { k, left, top } = stageScale();
-    const px = (e.clientX - left) / k;
-    const py = (e.clientY - top) / k;
-    if (px <= 6) os.update(win.id, { snap: "left" });
-    else if (px >= SCREEN_W - 6) os.update(win.id, { snap: "right" });
-    else if (py <= 4) os.update(win.id, { max: true });
+    setHint(null);
+    const { px, py } = toStage(e);
+    const s = snapAt(px, py);
+    if (s === "max") os.snap(win.id, null, true);
+    else if (s) os.snap(win.id, s);
   };
 
   const onResizeDown = (dir: string) => (e: React.PointerEvent) => {
@@ -80,37 +112,43 @@ export function Window({ win, active }: { win: Win; active: boolean }) {
     <div className={"rs rs-" + dir} onPointerDown={onResizeDown(dir)} onPointerMove={onResizeMove} onPointerUp={onResizeUp} />
   );
 
+  const cls = ["win", active && "active", (win.max || win.snap) && "docked", win.anim && "anim", win.phase]
+    .filter(Boolean).join(" ");
+
   return (
-    <div
-      className={"win" + (active ? " active" : "") + (win.max || win.snap ? " docked" : "")}
-      style={{ left: g.x, top: g.y, width: g.w, height: g.h, zIndex: win.z }}
-      onPointerDown={(e) => { e.stopPropagation(); if (!active) os.focus(win.id); useOs.getState().toggleStart(false); }}
-    >
-      <div className="win-title" onPointerDown={onTitleDown} onPointerMove={onTitleMove} onPointerUp={onTitleUp} onDoubleClick={() => os.toggleMax(win.id)}>
-        <AppIcon name={meta.icon} size={22} />
-        <span className="win-name">{meta.title[lang]}</span>
-        <div className="wbtns">
-          <button className="wbtn" onClick={() => os.minimize(win.id)}>
-            <svg viewBox="0 0 12 12"><path d="M2 6h8" /></svg>
-          </button>
-          <button className="wbtn" onClick={() => os.toggleMax(win.id)}>
-            <svg viewBox="0 0 12 12">{win.max || win.snap ? <path d="M3.5 1.5h7v7M1.5 3.5h7v7h-7z" /> : <path d="M1.5 1.5h9v9h-9z" />}</svg>
-          </button>
-          <button className="wbtn close" onClick={() => os.close(win.id)}>
-            <svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" /></svg>
-          </button>
+    <>
+      {hint && <div className="snap-ghost" style={{ left: geometry(hint).x, top: geometry(hint).y, width: geometry(hint).w, height: geometry(hint).h }} />}
+      <div
+        ref={el}
+        className={cls}
+        style={{ left: g.x, top: g.y, width: g.w, height: g.h, zIndex: win.z }}
+        onPointerDown={(e) => { e.stopPropagation(); if (!active) os.focus(win.id); os.dismiss(); }}
+      >
+        <div className="win-title" onPointerDown={onTitleDown} onPointerMove={onTitleMove} onPointerUp={onTitleUp} onDoubleClick={() => os.toggleMax(win.id)}>
+          <div className="traffic">
+            <button className="tl tl-close" onClick={() => os.close(win.id)} aria-label="Close">
+              <svg viewBox="0 0 12 12"><path d="M3.5 3.5l5 5M8.5 3.5l-5 5" /></svg>
+            </button>
+            <button className="tl tl-min" onClick={() => os.minimize(win.id)} aria-label="Minimize">
+              <svg viewBox="0 0 12 12"><path d="M2.5 6h7" /></svg>
+            </button>
+            <button className="tl tl-zoom" onClick={() => os.toggleMax(win.id)} aria-label="Zoom">
+              <svg viewBox="0 0 12 12"><path className="fill" d="M3.2 7.6 7.6 3.2H3.2zM8.8 4.4 4.4 8.8h4.4z" /></svg>
+            </button>
+          </div>
+          <span className="win-name">{meta.title[lang]}</span>
         </div>
+        <div className="win-body">
+          <Body winId={win.id} />
+        </div>
+        {!win.max && !win.snap && (
+          <>
+            {handle("e")}
+            {handle("s")}
+            {handle("se")}
+          </>
+        )}
       </div>
-      <div className="win-body">
-        <Body winId={win.id} />
-      </div>
-      {!win.max && !win.snap && (
-        <>
-          {handle("e")}
-          {handle("s")}
-          {handle("se")}
-        </>
-      )}
-    </div>
+    </>
   );
 }
