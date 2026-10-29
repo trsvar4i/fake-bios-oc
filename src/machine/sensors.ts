@@ -36,8 +36,21 @@ export function stability(c: Config): { cpu: "ok" | "unstable" | "fail"; mem: "o
   };
 }
 
+/** Режим питания ОС: «Тихий» снижает частоту, «Производительность» поднимает. */
+export type Power = "quiet" | "balanced" | "performance";
+/** Нагрузка от ОС. В BIOS и на POST — обычная (0.35), как было всегда. */
+export interface Workload { load: number; power: Power }
+export const IDLE_WORKLOAD: Workload = { load: 0.35, power: "balanced" };
+
+const POWER_RATIO: Record<Power, number> = { quiet: -8, balanced: 0, performance: 2 };
+/** С какой температуры процессор начинает сбрасывать частоту, °C */
+export const THROTTLE_AT = 92;
+
 /** Тепловыделение без учёта охлаждения, °C */
-function heat(c: Config): number {
+function heat(c: Config, w: Workload = IDLE_WORKLOAD): number {
+  return baseHeat(c) + (w.load - 0.35) * 26 + POWER_RATIO[w.power] * 1.6;
+}
+function baseHeat(c: Config): number {
   const oc = Math.max(0, ratioOf(c) - HW.baseRatio);
   const uc = Math.max(0, HW.baseRatio - ratioOf(c));
   const extraV = vcoreOf(c) - requiredVcore(c); // перенапряжение греет, андервольт охлаждает
@@ -45,7 +58,7 @@ function heat(c: Config): number {
 }
 
 /** Температура, к которой стремится CPU при текущей скорости вентилятора. */
-export const targetTemp = (c: Config, t: number) => heat(c) - 0.25 * dutyAt(activeCurve(c), t);
+export const targetTemp = (c: Config, t: number, w?: Workload) => heat(c, w) - 0.25 * dutyAt(activeCurve(c), t);
 
 /** Установившаяся температура (для POST). */
 export function equilibrium(c: Config): number {
@@ -67,8 +80,8 @@ export function initialThermal(c: Config): Thermal {
 }
 
 /** Шаг тепловой модели: температура и обороты меняются плавно. */
-export function stepThermal(th: Thermal, c: Config, dt: number): Thermal {
-  const temp = th.temp + (targetTemp(c, th.temp) - th.temp) * Math.min(1, dt / 4);
+export function stepThermal(th: Thermal, c: Config, dt: number, w?: Workload): Thermal {
+  const temp = th.temp + (targetTemp(c, th.temp, w) - th.temp) * Math.min(1, dt / 4);
   const rpmTarget = dutyAt(activeCurve(c), temp) * 24;
   const rpm = th.rpm + (rpmTarget - th.rpm) * Math.min(1, dt / 1.2);
   let { jitter, acc } = th;
@@ -77,13 +90,17 @@ export function stepThermal(th: Thermal, c: Config, dt: number): Thermal {
   return { temp, rpm, jitter, acc };
 }
 
-export function readings(c: Config, th: Thermal) {
-  const ratio = ratioOf(c);
+export function readings(c: Config, th: Thermal, w: Workload = IDLE_WORKLOAD) {
+  // режим питания меняет частоту, перегрев её сбрасывает (троттлинг)
+  const throttle = th.temp > THROTTLE_AT ? Math.min(12, Math.ceil((th.temp - THROTTLE_AT) * 1.5)) : 0;
+  const ratio = Math.max(20, ratioOf(c) + POWER_RATIO[w.power] - throttle);
   const mem = XMP[c.xmp];
   const temp = th.temp + th.jitter;
   const rpm = Math.round(th.rpm);
   return {
     ratio,
+    throttled: throttle > 0,
+    load: w.load,
     freq: (ratio / 10).toFixed(2),
     vcore: vcoreOf(c),
     dramV: dramVOf(c),

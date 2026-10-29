@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLang } from "../../machine/store";
 import { useOs, type Reminder } from "../osStore";
+import "./Reminders.css";
 
 export function setReminders(list: Reminder[]) {
   useOs.getState().setPref("reminders", list);

@@ -1,9 +1,10 @@
 import { useEffect, type CSSProperties } from "react";
+// общие стили первыми: стили приложений (apps/*.css) подключаются после и уточняют их
+import "./os.css";
 import { useOs } from "./osStore";
 import { Crash, Leaving, LockScreen, Splash } from "./Screens";
 import { Desktop } from "./Desktop";
 import { wallpaperOf } from "./wallpapers";
-import "./os.css";
 
 export function Os() {
   const stage = useOs((s) => s.stage);

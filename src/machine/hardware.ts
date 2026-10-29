@@ -1,9 +1,22 @@
 // Фейковое железо. Только чтение.
 
+const FW_KEY = "kestrel.fw";
+/** Доступное обновление прошивки (ставится из «Системных настроек» ОС). */
+export const FW_LATEST = { bios: "E7E26KS.220", buildDate: "10/22/2026" };
+const FW_FACTORY = { bios: "E7E26KS.214", buildDate: "07/12/2026" };
+
+function firmware(): { bios: string; buildDate: string } {
+  try { return JSON.parse(localStorage.getItem(FW_KEY) ?? "null") ?? FW_FACTORY; } catch { return FW_FACTORY; }
+}
+/** Записать новую прошивку (её увидят POST, Setup и ОС после перезагрузки). */
+export function flashFirmware(v: { bios: string; buildDate: string }) {
+  try { localStorage.setItem(FW_KEY, JSON.stringify(v)); } catch { /* хранилище недоступно */ }
+}
+
 export const HW = {
   product: "Kestrel B650 Nightfall (KS-7E26)",
-  bios: "E7E26KS.214",
-  buildDate: "07/12/2026",
+  get bios() { return firmware().bios; },
+  get buildDate() { return firmware().buildDate; },
   cpu: "AMD Ryzen 7 7700X 8-Core Processor",
   cores: 8,
   threads: 16,

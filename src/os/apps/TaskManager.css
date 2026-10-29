@@ -1,0 +1,18 @@
+/* TaskManager: стили приложения (вынесены из os.css) */
+.taskmgr { display: flex; flex-direction: column; height: 100%; }
+.tm-proc { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.tm-proc table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.tm-proc th { text-align: left; padding: 8px 14px; font-weight: 500; opacity: .6; }
+.tm-proc td { padding: 6px 14px; }
+.tm-proc tr.sel td { background: rgba(79, 209, 139, .18); }
+.tm-proc tbody tr:hover td { background: rgba(var(--fg), .05); }
+.tm-proc > table { flex: none; }
+.tm-foot { margin-top: auto; padding: 10px 14px; display: flex; justify-content: flex-end; border-top: 1px solid rgba(var(--fg), .08); }
+.tm-perf { display: grid; grid-template-columns: auto 1fr; gap: 24px; padding: 20px; }
+.tm-graph-title { margin-bottom: 8px; font-weight: 600; }
+.tm-graph svg { background: rgba(79, 209, 139, .05); border: 1px solid rgba(79, 209, 139, .4); }
+.tm-area { fill: rgba(79, 209, 139, .2); stroke: none; }
+.tm-line { fill: none; stroke: #4fd18b; stroke-width: 2; }
+.tm-cpu-name { margin-top: 8px; font-size: 14px; opacity: .6; }
+.tm-proc, .tm-perf { animation: page-in .3s var(--ease) both; }
+.tm-proc tr.sel td { background: var(--accent); color: #fff; }

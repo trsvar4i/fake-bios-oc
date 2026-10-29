@@ -1,6 +1,7 @@
 import { useLang } from "../../machine/store";
 import { useOs } from "../osStore";
 import { useFs } from "../fs";
+import "./TextEdit.css";
 
 /** Текстовый редактор файла из Finder. Изменения сохраняются сразу, как в macOS. */
 export function TextEdit({ winId }: { winId: number }) {

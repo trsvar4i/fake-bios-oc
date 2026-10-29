@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLang } from "../../machine/store";
 import { useOs } from "../osStore";
+import "./Notes.css";
 
 /** Блокнот. Текст сохраняется автоматически и переживает перезагрузку. */
 export function Notes() {

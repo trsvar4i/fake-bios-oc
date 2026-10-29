@@ -1,0 +1,13 @@
+/* Paint: рисовалка */
+.paint { display: flex; flex-direction: column; height: 100%; }
+.pt-bar { display: flex; align-items: center; gap: 14px; padding: 10px 14px; border-bottom: 1px solid rgba(0, 0, 0, .35); flex-wrap: wrap; }
+.pt-sizes, .pt-colors { display: flex; gap: 4px; }
+.pt-sizes button { width: 32px; height: 32px; border: none; border-radius: 8px; background: none; display: flex; align-items: center; justify-content: center; }
+.pt-sizes button.on { background: rgba(var(--fg), .14); }
+.pt-sizes i { display: block; border-radius: 50%; background: var(--text); }
+.pt-colors button { width: 24px; height: 24px; padding: 0; border: none; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .25); transition: transform .15s var(--ease); }
+.pt-colors button:hover { transform: scale(1.15); }
+.pt-colors button.on { box-shadow: 0 0 0 2px var(--win-bg), 0 0 0 4px var(--accent); }
+.pt-spacer { flex: 1; }
+.pt-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(var(--fg), .04); }
+.pt-stage canvas { max-width: 100%; max-height: 100%; border-radius: 6px; box-shadow: 0 6px 24px rgba(0, 0, 0, .3); cursor: crosshair; touch-action: none; background: #fff; }

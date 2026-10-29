@@ -8,7 +8,7 @@ import { MENUBAR_H, SCREEN_W, WORK, topWindow, useOs, type Widget } from "./osSt
 import { Dial } from "./apps/Clock";
 import { dayKey, monthGrid } from "./apps/Calendar";
 import { toggleReminder } from "./apps/Reminders";
-import { stageScale, useNow, usePresence } from "./util";
+import { stageScale, useNow, usePresence, useTimeFormat } from "./util";
 import { ctxAt } from "./apps/Finder";
 
 export const WSIZE = { s: { w: 176, h: 176 }, m: { w: 372, h: 176 } };
@@ -158,6 +158,7 @@ export function WidgetGallery() {
 
 function ClockW({ size }: { size: "s" | "m" }) {
   const now = useNow();
+  const fmt = useTimeFormat();
   const { lang } = useLang();
   const locale = lang === "ru" ? "ru-RU" : "en-GB";
   if (size === "s") return <div className="w-clock"><Dial d={now} size={140} /></div>;
@@ -165,7 +166,7 @@ function ClockW({ size }: { size: "s" | "m" }) {
     <div className="w-clock m">
       <Dial d={now} size={140} />
       <div>
-        <div className="w-big">{now.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}</div>
+        <div className="w-big">{fmt(now)}</div>
         <div className="w-sub">{now.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" })}</div>
       </div>
     </div>
@@ -220,7 +221,7 @@ function RemindersW({ size }: { size: "s" | "m" }) {
 function SystemW({ size }: { size: "s" | "m" }) {
   const { t } = useLang();
   const s = useStore();
-  const r = readings(s.saved, s.thermal);
+  const r = readings(s.saved, s.thermal, s);
   const pct = Math.min(1, Math.max(0, (r.temp - 25) / 75));
   const ring = (
     <svg className={"w-ring " + tempClass(r.temp)} viewBox="0 0 100 100" width="118" height="118">

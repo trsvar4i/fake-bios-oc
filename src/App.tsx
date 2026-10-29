@@ -6,6 +6,8 @@ import { Post } from "./bios/post/Post";
 import { BootScreen } from "./bios/post/BootScreen";
 import { PowerScreen } from "./bios/post/PowerScreen";
 import { Os } from "./os/Os";
+import { Tour } from "./Tour";
+import { TouchLayer } from "./Touch";
 
 const STAGE_W = 1920;
 const STAGE_H = 1080;
@@ -24,6 +26,7 @@ function Stage({ children }: { children: ReactNode }) {
       <div className="stage" style={{ transform: `translate(-50%, -50%) scale(${scale})` }}>
         {children}
       </div>
+      <TouchLayer />
     </div>
   );
 }
@@ -50,6 +53,7 @@ export function App() {
       {phase === "setup" && <Setup />}
       {phase === "boot" && <BootScreen />}
       {phase === "os" && <Os />}
+      {phase === "off" && <Tour />}
       <Dialog />
     </Stage>
   );

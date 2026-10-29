@@ -1,22 +1,26 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useStore, useLang } from "../../machine/store";
-import { HW } from "../../machine/hardware";
+import { FW_LATEST, HW } from "../../machine/hardware";
 import { useOs } from "../osStore";
 import { osPower, playOs } from "../power";
 import { WALLPAPERS } from "../wallpapers";
 import { WallpaperArt } from "../Wallpaper";
-import { DEFAULT_DOCK } from "../osStore";
+import { DEFAULT_DOCK, createUserPrefs } from "../osStore";
+import { currentUser, listUsers, removeUserData, saveUsers } from "../users";
+import "./Settings.css";
 
 
 export function Settings() {
   const { t } = useLang();
-  const [page, setPage] = useState("appearance");
+  const [page, setPage] = useState("general");
   const pages: [string, string][] = [
+    ["general", t("General", "Основные")],
     ["appearance", t("Appearance", "Оформление")],
     ["personal", t("Wallpaper", "Обои")],
     ["dock", t("Desktop & Dock", "Рабочий стол и Dock")],
     ["account", t("Account", "Учётная запись")],
     ["sound", t("Sound", "Звук")],
+    ["update", t("Software Update", "Обновление ПО")],
     ["recovery", t("Recovery", "Восстановление")],
     ["about", t("About", "О системе")],
   ];
@@ -28,11 +32,13 @@ export function Settings() {
         ))}
       </nav>
       <div className="set-page" key={page}>
+        {page === "general" && <General />}
         {page === "appearance" && <Appearance />}
         {page === "personal" && <Personal />}
         {page === "dock" && <DockPage />}
         {page === "account" && <Account />}
         {page === "sound" && <Sound />}
+        {page === "update" && <Update />}
         {page === "recovery" && <Recovery />}
         {page === "about" && <About />}
       </div>
@@ -55,6 +61,32 @@ function Personal() {
           </button>
         ))}
       </div>
+    </>
+  );
+}
+
+function General() {
+  const { t, lang } = useLang();
+  const prefs = useOs((s) => s.prefs);
+  const set = useOs.getState().setPref;
+  return (
+    <>
+      <h2>{t("General", "Основные")}</h2>
+      <div className="set-line">
+        <span>{t("Computer name", "Имя компьютера")}<small className="set-hint">{t("Shown in Terminal and About This PC", "Видно в Терминале и «Об этом компьютере»")}</small></span>
+        <input className="set-input" value={prefs.hostName} maxLength={24} onChange={(e) => set("hostName", e.target.value)} onBlur={(e) => !e.target.value.trim() && set("hostName", "Kestrel")} />
+      </div>
+      <div className="set-line">
+        <span>{t("Language", "Язык")}<small className="set-hint">{t("Same setting as in BIOS — saved to CMOS", "Та же настройка, что в BIOS — сохраняется в CMOS")}</small></span>
+        <div className="seg">
+          <button className={lang === "en" ? "on" : ""} onClick={() => useStore.getState().setLanguage("English")}>English</button>
+          <button className={lang === "ru" ? "on" : ""} onClick={() => useStore.getState().setLanguage("Русский")}>Русский</button>
+        </div>
+      </div>
+      <label className="set-switch">
+        <span>{t("24-hour time", "24-часовой формат")}<small>{t("Off — 12-hour with AM/PM", "Выкл. — 12-часовой с AM/PM")}</small></span>
+        <input type="checkbox" checked={!prefs.hour12} onChange={(e) => set("hour12", !e.target.checked)} />
+      </label>
     </>
   );
 }
@@ -113,10 +145,63 @@ function Account() {
         <span className="avatar big">{name.slice(0, 1).toUpperCase()}</span>
         <label>
           {t("User name", "Имя пользователя")}
-          <input value={name} maxLength={20} onChange={(e) => useOs.getState().setPref("userName", e.target.value || "User")} />
+          <input value={name} maxLength={20} onChange={(e) => {
+            const v = e.target.value || "User";
+            useOs.getState().setPref("userName", v);
+            saveUsers(listUsers().map((u) => (u.id === currentUser() ? { ...u, name: v } : u)));
+          }} />
         </label>
       </div>
       <Password />
+      <Users />
+    </>
+  );
+}
+
+/** Учётные записи компьютера: добавить, удалить, войти под другим пользователем. */
+function Users() {
+  const { t } = useLang();
+  const [list, setList] = useState(listUsers());
+  const [draft, setDraft] = useState("");
+  const cur = currentUser();
+  const add = () => {
+    const name = draft.trim();
+    if (!name) return;
+    const id = "u" + Date.now().toString(36);
+    createUserPrefs(id, name);
+    const next = [...list, { id, name }];
+    saveUsers(next);
+    setList(next);
+    setDraft("");
+  };
+  const remove = (id: string) => {
+    removeUserData(id);
+    const next = list.filter((u) => u.id !== id);
+    saveUsers(next);
+    setList(next);
+  };
+  return (
+    <>
+      <h2 className="set-sub">{t("Users", "Пользователи")}</h2>
+      <div className="users-list">
+        {list.map((u) => (
+          <div key={u.id} className="users-row">
+            <span className="avatar">{u.name.slice(0, 1).toUpperCase()}</span>
+            <span className="users-name">{u.name}{u.id === cur && <small> · {t("signed in", "вы")}</small>}</span>
+            {u.id !== cur && (
+              <>
+                <button className="set-btn" onClick={() => { useOs.getState().switchUser(u.id); useOs.getState().setStage("lock"); }}>{t("Switch", "Войти")}</button>
+                <button className="set-btn" onClick={() => remove(u.id)}>{t("Delete", "Удалить")}</button>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+      <form className="users-add" onSubmit={(e) => { e.preventDefault(); add(); }}>
+        <input className="set-input" value={draft} maxLength={20} placeholder={t("New user name", "Имя нового пользователя")} onChange={(e) => setDraft(e.target.value)} />
+        <button className="set-btn primary" disabled={!draft.trim() || list.length >= 5}>{t("Add User", "Добавить")}</button>
+      </form>
+      <p className="set-note">{t("Each user has their own wallpaper, password, widgets, Dock and files.", "У каждого пользователя свои обои, пароль, виджеты, Dock и файлы.")}</p>
     </>
   );
 }
@@ -188,6 +273,51 @@ function Sound() {
           {t("No output devices found. The HD Audio Controller is disabled in BIOS.", "Устройства вывода не найдены. Звуковой контроллер HD Audio выключен в BIOS.")}
         </div>
       )}
+    </>
+  );
+}
+
+/** Обновление прошивки материнской платы прямо из ОС. */
+function Update() {
+  const { t } = useLang();
+  const [state, setState] = useState<"idle" | "checking" | "ready" | "downloading" | "downloaded">("idle");
+  const [pct, setPct] = useState(0);
+  const current = HW.bios;
+  const fresh = current === FW_LATEST.bios;
+  useEffect(() => {
+    if (state === "checking") { const id = window.setTimeout(() => setState("ready"), 1200); return () => clearTimeout(id); }
+    if (state !== "downloading") return;
+    const id = window.setInterval(() => setPct((p) => {
+      if (p >= 100) { setState("downloaded"); return 100; }
+      return Math.min(100, p + 4 + Math.random() * 6);
+    }), 120);
+    return () => clearInterval(id);
+  }, [state]);
+  return (
+    <>
+      <h2>{t("Software Update", "Обновление ПО")}</h2>
+      <div className="upd-card">
+        <div><b>Kestrel OS 1.0</b><div className="set-note">{t("Your system is up to date.", "Система обновлена.")}</div></div>
+      </div>
+      <div className="upd-card">
+        <div>
+          <b>{t("Motherboard firmware", "Прошивка материнской платы")}</b>
+          <div className="set-note">UEFI {current} ({HW.buildDate})</div>
+          {!fresh && state !== "idle" && state !== "checking" && (
+            <div className="upd-new">
+              {t("Available", "Доступна")}: <b>{FW_LATEST.bios}</b> ({FW_LATEST.buildDate}) —{" "}
+              {t("better memory compatibility, quieter fan curve at idle.", "лучше совместимость памяти, тише вентиляторы в простое.")}
+            </div>
+          )}
+          {state === "downloading" && <div className="bar upd-bar"><i style={{ width: `${pct}%` }} /></div>}
+        </div>
+        {fresh ? <span className="ok">{t("Up to date", "Актуальна")}</span>
+          : state === "idle" ? <button className="set-btn" onClick={() => setState("checking")}>{t("Check for Updates", "Проверить обновления")}</button>
+          : state === "checking" ? <span className="set-note">{t("Checking…", "Проверка…")}</span>
+          : state === "ready" ? <button className="set-btn primary" onClick={() => setState("downloading")}>{t("Download", "Загрузить")}</button>
+          : state === "downloading" ? <span className="set-note">{Math.floor(pct)}%</span>
+          : <button className="set-btn primary" onClick={osPower.updateFirmware}>{t("Restart and Install", "Перезагрузить и установить")}</button>}
+      </div>
     </>
   );
 }

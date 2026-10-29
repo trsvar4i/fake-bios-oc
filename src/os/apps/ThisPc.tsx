@@ -3,15 +3,17 @@ import { HW } from "../../machine/hardware";
 import { readings } from "../../machine/sensors";
 import { useOs } from "../osStore";
 import { OsLogo } from "../AppIcon";
+import "./ThisPc.css";
 
 /** «Об этом компьютере»: всё из сохранённой конфигурации BIOS. */
 export function ThisPc() {
   const s = useStore();
   const c = s.saved;
-  const r = readings(c, s.thermal);
+  const r = readings(c, s.thermal, s);
   const { t } = useLang();
 
   const rows: [string, string][] = [
+    [t("Name", "Имя"), useOs.getState().prefs.hostName],
     [t("Processor", "Процессор"), `${HW.cpu.replace(" Processor", "")} @ ${r.freq} GHz`],
     [t("Memory", "Память"), `32 GB DDR5 ${r.dramFreq} MT/s`],
     [t("Board", "Плата"), HW.product],

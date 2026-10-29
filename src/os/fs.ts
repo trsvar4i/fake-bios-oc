@@ -1,6 +1,7 @@
 // Файлы пользователя: общая файловая система для Finder, TextEdit, Терминала и рабочего стола.
 // Пути относительно домашней папки: "~", "~/Documents/readme.txt". Корзина — "~/.Trash".
 import { create } from "zustand";
+import { filesKey } from "./users";
 
 export interface FsNode {
   type: "dir" | "file";
@@ -12,7 +13,6 @@ export interface FsNode {
 
 export const HOME = "~";
 export const TRASH = "~/.Trash";
-const FS_KEY = "kestrel.fs";
 
 const now = () => Date.now();
 const DEFAULT_FS: Record<string, FsNode> = {
@@ -27,9 +27,10 @@ const DEFAULT_FS: Record<string, FsNode> = {
   },
 };
 
-function load(): Record<string, FsNode> {
+/** Файлы пользователя (у каждого свои). */
+function load(id?: string): Record<string, FsNode> {
   try {
-    const raw = localStorage.getItem(FS_KEY);
+    const raw = localStorage.getItem(filesKey(id));
     return raw ? { ...DEFAULT_FS, ...JSON.parse(raw) } : { ...DEFAULT_FS };
   } catch {
     return { ...DEFAULT_FS };
@@ -74,6 +75,8 @@ interface FsState {
   /** удалить насовсем (вместе с содержимым) */
   remove: (p: string) => void;
   emptyTrash: () => void;
+  /** перечитать файлы (после смены пользователя) */
+  reload: () => void;
 }
 
 /** Переносит объект и всё, что в нём лежит, на новый путь. */
@@ -90,10 +93,11 @@ function moveTree(nodes: Record<string, FsNode>, from: string, to: string, patch
 export const useFs = create<FsState>((set, get) => {
   const commit = (nodes: Record<string, FsNode>) => {
     set({ nodes });
-    try { localStorage.setItem(FS_KEY, JSON.stringify(nodes)); } catch { /* хранилище недоступно */ }
+    try { localStorage.setItem(filesKey(), JSON.stringify(nodes)); } catch { /* хранилище недоступно */ }
   };
   return {
     nodes: load(),
+    reload: () => set({ nodes: load() }),
     list: (dir) => {
       const { nodes } = get();
       return Object.keys(nodes)

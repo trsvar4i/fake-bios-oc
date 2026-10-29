@@ -5,7 +5,7 @@ import { AppIcon } from "./AppIcon";
 import { Window } from "./Window";
 import { MenuBar } from "./MenuBar";
 import { Dock } from "./Dock";
-import { AboutPanel, AppSwitcher, Launchpad, OverviewBackdrop, ShortcutsPanel, Spotlight } from "./Overlays";
+import { AboutPanel, AppSwitcher, Launchpad, OverviewBackdrop, ShortcutsPanel, Spotlight, WelcomePanel } from "./Overlays";
 import { ContextMenuLayer } from "./Menus";
 import { DesktopWidgets, WidgetGallery } from "./Widgets";
 import { Wallpaper } from "./Wallpaper";
@@ -13,6 +13,7 @@ import { HOME, join, useFs } from "./fs";
 import { FileItem, ctxAt, itemMenu, openPath, useDrop } from "./apps/Finder";
 import { cmd, handleShortcut, switcherCommit } from "./commands";
 import { useTimerService } from "./apps/Clock";
+import { useLoadService } from "./load";
 
 const DESK = `${HOME}/Desktop`;
 
@@ -57,6 +58,13 @@ export function Desktop() {
     return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("keyup", onUp); };
   }, []);
   useTimerService();
+  // первый вход пользователя — приветствие (после того как выедут панели)
+  useEffect(() => {
+    if (useOs.getState().prefs.welcomed) return;
+    const id = window.setTimeout(() => useOs.getState().setPanel("welcome"), 900);
+    return () => clearTimeout(id);
+  }, [os.prefs.userName]);
+  useLoadService();
 
   return (
     <div
@@ -108,7 +116,7 @@ export function Desktop() {
       </div>
 
       <OverviewBackdrop />
-      {os.windows.filter((w) => !w.min).map((w) => (
+      {os.windows.filter((w) => !w.min && w.space === os.space).map((w) => (
         <Window key={w.id} win={w} active={top?.id === w.id && !os.deskFocus} />
       ))}
 
@@ -120,6 +128,7 @@ export function Desktop() {
       <AboutPanel />
       <ShortcutsPanel />
       <AppSwitcher />
+      <WelcomePanel />
       <ContextMenuLayer />
       <div className="brightness" style={{ opacity: 1 - os.brightness }} />
     </div>

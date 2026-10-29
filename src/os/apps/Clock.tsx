@@ -3,7 +3,8 @@ import { create } from "zustand";
 import { useLang } from "../../machine/store";
 import { playOs } from "../power";
 import { useOs } from "../osStore";
-import { useNow } from "../util";
+import { useNow, useTimeFormat } from "../util";
+import "./Clock.css";
 
 const CITIES: [string, string, string][] = [
   ["Europe/London", "London", "Лондон"],
@@ -60,6 +61,7 @@ function World() {
   const { t, lang } = useLang();
   const now = useNow();
   const here = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const fmt = useTimeFormat();
   const list: [string | undefined, string][] = [[undefined, t("Local time", "Местное время") + " · " + here.split("/").pop()!.replace("_", " ")], ...CITIES.map(([tz, en, ru]) => [tz, lang === "ru" ? ru : en] as [string, string])];
   return (
     <div className="cl-world page">
@@ -67,7 +69,7 @@ function World() {
         <div key={name} className="cl-city">
           <Dial d={now} tz={tz} size={110} />
           <div className="cl-name">{name}</div>
-          <div className="cl-time">{now.toLocaleTimeString(lang === "ru" ? "ru-RU" : "en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit" })}</div>
+          <div className="cl-time">{fmt(now, tz)}</div>
         </div>
       ))}
     </div>

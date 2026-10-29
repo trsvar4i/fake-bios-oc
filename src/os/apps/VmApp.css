@@ -1,0 +1,19 @@
+/* VmApp: стили приложения (вынесены из os.css) */
+.vmapp { display: grid; grid-template-columns: 260px 1fr; height: 100%; }
+.vm-list { border-right: 1px solid rgba(var(--fg), .08); padding: 12px; }
+.vm-list-title { font-size: 14px; opacity: .6; margin-bottom: 10px; }
+.vm-item { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 8px; }
+.vm-item:hover { background: rgba(var(--fg), .06); }
+.vm-item.sel { background: rgba(167, 123, 255, .22); }
+.vm-state { font-size: 13px; opacity: .7; }
+.vm-state.running { color: #4ade80; opacity: 1; }
+.vm-main { padding: 16px 24px; overflow: auto; }
+.vm-specs { opacity: .7; margin-bottom: 14px; }
+.vm-actions { display: flex; gap: 10px; }
+.vm-actions .primary { background: #7b4dff; border-color: #7b4dff; }
+.vm-error { margin-top: 18px; padding: 14px 16px; border-radius: 10px; background: rgba(255, 90, 90, .12); border: 1px solid rgba(255, 90, 90, .4); }
+.vm-error p { margin: 8px 0 12px; opacity: .9; }
+.vm-console { margin-top: 18px; padding: 14px; border-radius: 8px; background: #050506; font-family: "JetBrains Mono", monospace; font-size: 14px; min-height: 200px; white-space: pre-wrap; }
+/* консоль ВМ всегда тёмная — текст светлый и в светлом оформлении */
+.vm-console { color: #e8e8ea; }
+.vm-actions .primary { color: #fff; }

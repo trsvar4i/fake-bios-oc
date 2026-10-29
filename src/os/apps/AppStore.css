@@ -1,0 +1,24 @@
+/* AppStore: магазин приложений */
+.appstore { height: 100%; overflow: auto; padding: 26px 34px; }
+.as-hero { padding: 26px 30px; border-radius: 20px; background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 55%, #1b1f4a), color-mix(in srgb, var(--accent) 20%, #120c26)); color: #fff; animation: page-in .4s var(--ease) both; }
+.as-kicker { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; opacity: .75; }
+.as-hero h1 { margin: 6px 0 4px; font-size: 32px; }
+.as-hero p { margin: 0; opacity: .8; }
+.as-offline { margin-top: 16px; }
+.as-grid { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+.as-card { display: flex; align-items: center; gap: 18px; padding: 16px 18px; border-radius: 16px; background: rgba(var(--fg), .05); animation: page-in .35s var(--ease) both; transition: background .2s; }
+.as-card:hover { background: rgba(var(--fg), .08); }
+.as-card .app-icon { transition: transform .3s var(--ease); }
+.as-card:hover .app-icon { transform: scale(1.06) rotate(-2deg); }
+.as-info { flex: 1; min-width: 0; }
+.as-name { font-size: 20px; font-weight: 700; }
+.as-desc { color: var(--text-2); margin-top: 2px; }
+.as-size { color: var(--text-2); font-size: 13px; margin-top: 4px; }
+.as-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 120px; }
+.as-get { min-width: 100px; height: 34px; padding: 0 18px; border: none; border-radius: 17px; background: rgba(var(--fg), .14); color: var(--accent); font-weight: 700; transition: background .2s, transform .15s; }
+.as-get:not(:disabled):hover { background: var(--accent); color: #fff; }
+.as-get:active { transform: scale(.96); }
+.as-get:disabled { opacity: .4; }
+.as-del { border: none; background: none; color: var(--text-2); font-size: 14px; }
+.as-del:hover { color: #ff453a; }
+.as-ring { width: 30px; height: 30px; margin-right: 34px; border-radius: 50%; border: 3px solid rgba(var(--fg), .15); border-top-color: var(--accent); animation: ring-spin .8s linear infinite; }

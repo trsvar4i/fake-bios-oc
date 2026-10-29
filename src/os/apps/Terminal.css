@@ -1,0 +1,6 @@
+/* Terminal: стили приложения (вынесены из os.css) */
+.terminal { height: 100%; overflow: auto; padding: 6px 10px 10px; background: rgba(22, 22, 24, .96); color: #f2f2f2; font-family: "SF Mono", Menlo, "JetBrains Mono", Consolas, monospace; font-size: 16px; line-height: 1.32; white-space: pre-wrap; tab-size: 8; user-select: text; }
+.term-input { display: flex; white-space: pre; }
+.term-input input { flex: 1; min-width: 0; border: none; outline: none; background: none; color: inherit; font: inherit; padding: 0; caret-color: #c7c7c7; }
+.term-input input.secret { color: transparent; caret-color: transparent; }
+.terminal ::selection { background: rgba(120, 140, 200, .45); }

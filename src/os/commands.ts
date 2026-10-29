@@ -112,6 +112,13 @@ export function handleShortcut(e: KeyboardEvent): boolean {
   if (e.ctrlKey && e.code === "Space") { useOs.getState().setPanel("spotlight"); return true; }
   if (e.altKey && e.code === "Backquote") { switcherStep(e.shiftKey); return true; }
   if (e.altKey && e.code === "ArrowUp") { useOs.getState().setPanel("overview"); return true; }
+  // рабочие столы: Alt+←/→ — соседний, Alt+1…6 — по номеру
+  if (e.altKey && !e.ctrlKey && (e.code === "ArrowLeft" || e.code === "ArrowRight")) {
+    const os = useOs.getState();
+    os.goSpace(os.space + (e.code === "ArrowRight" ? 1 : -1));
+    return true;
+  }
+  if (e.altKey && !e.ctrlKey && /^Digit[1-6]$/.test(e.code)) { useOs.getState().goSpace(Number(e.code.slice(5)) - 1); return true; }
   if (!e.altKey || e.ctrlKey || e.metaKey) return false;
   const map: Record<string, () => void> = {
     KeyW: cmd.closeWindow, KeyQ: cmd.quitApp, KeyM: cmd.minimize, KeyH: e.shiftKey ? cmd.hideOthers : cmd.hideApp,

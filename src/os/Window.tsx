@@ -45,7 +45,7 @@ export function Window({ win, active }: { win: Win; active: boolean }) {
 
   // «Все окна»: окно плавно уменьшается в свою ячейку сетки
   const overview = os.panel === "overview";
-  const cell = overview ? overviewLayout(visibleWindows(os.windows))[win.id] : undefined;
+  const cell = overview ? overviewLayout(visibleWindows(os.windows, os.space))[win.id] : undefined;
   const ovTransform = cell
     ? `translate(${cell.x - g.x}px, ${cell.y - g.y}px) scale(${cell.w / g.w})`
     : undefined;
@@ -127,7 +127,8 @@ export function Window({ win, active }: { win: Win; active: boolean }) {
     <div className={"rs rs-" + dir} onPointerDown={onResizeDown(dir)} onPointerMove={onResizeMove} onPointerUp={onResizeUp} />
   );
 
-  const cls = ["win", active && "active", (win.max || win.snap) && "docked", win.anim && "anim", win.phase, overview && "in-overview"]
+  const slide = os.spaceDir === 1 ? "from-right" : os.spaceDir === -1 ? "from-left" : null;
+  const cls = ["win", active && "active", (win.max || win.snap) && "docked", win.anim && "anim", win.phase, overview && "in-overview", !win.phase && slide]
     .filter(Boolean).join(" ");
 
   return (

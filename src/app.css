@@ -49,3 +49,31 @@ button { font: inherit; color: inherit; background: none; border: none; padding:
 .stage * { cursor: inherit; }
 .stage input { user-select: text; }
 
+
+/* ---------- знакомство при первом запуске ---------- */
+.tour { position: absolute; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, .55); backdrop-filter: blur(6px); animation: tour-fade .4s ease both; font-family: -apple-system, "Inter", "Segoe UI", sans-serif; }
+@keyframes tour-fade { from { opacity: 0; } }
+.tour-card { width: 760px; padding: 44px 52px 34px; border-radius: 28px; background: rgba(28, 28, 32, .92); box-shadow: 0 0 0 1px rgba(255, 255, 255, .12), 0 40px 100px rgba(0, 0, 0, .6); color: #f2f3f7; text-align: center; animation: tour-in .45s cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes tour-in { from { opacity: 0; transform: translateY(20px) scale(.98); } }
+.tour-icon { width: 92px; height: 92px; margin: 0 auto 18px; border-radius: 26px; display: flex; align-items: center; justify-content: center; font-size: 44px; background: linear-gradient(135deg, #7cc4ff, #2f6bff); box-shadow: 0 14px 40px rgba(47, 107, 255, .45); color: #fff; }
+.tour-card h2 { margin: 0 0 12px; font-size: 38px; }
+.tour-card p { margin: 0 auto; max-width: 600px; font-size: 22px; line-height: 1.45; color: rgba(242, 243, 247, .72); }
+.tour-dots { display: flex; justify-content: center; gap: 8px; margin: 28px 0 22px; }
+.tour-dots i { width: 9px; height: 9px; border-radius: 5px; background: rgba(255, 255, 255, .25); transition: width .3s; }
+.tour-dots i.on { width: 26px; background: #fff; }
+.tour-actions { display: flex; justify-content: space-between; }
+.tour-skip, .tour-next { height: 52px; padding: 0 30px; border-radius: 26px; font-size: 20px; }
+.tour-skip { color: rgba(255, 255, 255, .6); }
+.tour-next { background: #fff; color: #000; font-weight: 600; transition: transform .15s; }
+.tour-next:active { transform: scale(.97); }
+
+/* ---------- сенсорные экраны ---------- */
+body { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.touch-bar { position: fixed; right: max(10px, env(safe-area-inset-right)); bottom: max(10px, env(safe-area-inset-bottom)); z-index: 100; display: flex; gap: 8px; }
+.touch-bar button { min-width: 48px; height: 44px; padding: 0 14px; border-radius: 22px; background: rgba(40, 40, 46, .82); color: #fff; font: 600 15px -apple-system, "Inter", sans-serif; box-shadow: 0 0 0 1px rgba(255, 255, 255, .15); backdrop-filter: blur(10px); }
+.touch-bar button:active { background: rgba(80, 80, 90, .9); }
+.rotate-hint { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 30px; background: #000; color: #fff; text-align: center; font: 18px -apple-system, "Inter", sans-serif; }
+.rotate-phone { width: 56px; height: 96px; border: 4px solid #fff; border-radius: 12px; animation: rotate-phone 2s cubic-bezier(.5, 0, .3, 1) infinite; }
+@keyframes rotate-phone { 0%, 20% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+.rotate-hint button { min-width: 220px; height: 46px; border-radius: 23px; background: #fff; color: #000; font-weight: 600; }
+.rotate-hint button.ghost { background: none; color: rgba(255, 255, 255, .6); }

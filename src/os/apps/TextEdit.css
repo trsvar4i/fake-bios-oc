@@ -1,0 +1,5 @@
+/* TextEdit: стили приложения (вынесены из os.css) */
+.textedit { display: flex; flex-direction: column; height: 100%; }
+.textedit textarea { flex: 1; resize: none; border: none; outline: none; padding: 22px 28px; background: var(--field-bg); color: var(--text); font-size: 18px; line-height: 1.55; }
+.te-status { padding: 5px 14px; font-size: 13px; color: var(--text-2); border-top: 1px solid rgba(0, 0, 0, .35); }
+.te-missing { padding: 60px; text-align: center; color: var(--text-2); }

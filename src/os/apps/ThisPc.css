@@ -1,0 +1,11 @@
+/* ThisPc: стили приложения (вынесены из os.css) */
+.about { display: flex; flex-direction: column; align-items: center; padding: 26px 40px 20px; height: 100%; overflow: auto; }
+.about-logo { margin-bottom: 10px; filter: drop-shadow(0 8px 24px rgba(47, 107, 255, .35)); }
+.about h1 { margin: 6px 0 2px; font-size: 32px; font-weight: 700; }
+.about-ver { color: var(--text-2); font-size: 15px; margin-bottom: 18px; }
+.about-table { border-collapse: collapse; font-size: 15px; }
+.about-table td { padding: 4px 8px; vertical-align: top; }
+.about-table td:first-child { text-align: right; font-weight: 600; white-space: nowrap; }
+.about-table td:last-child { color: var(--text-2); }
+.about-actions { display: flex; gap: 10px; margin-top: 20px; }
+.about-foot { margin-top: auto; padding-top: 18px; font-size: 13px; color: var(--text-2); }

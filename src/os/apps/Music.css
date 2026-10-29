@@ -1,0 +1,27 @@
+/* Music: плеер */
+.music { display: grid; grid-template-columns: 1fr 320px; height: 100%; }
+.mu-now { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 20px; }
+.mu-cover { width: 230px; height: 230px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 20px 50px rgba(0, 0, 0, .45), inset 0 0 0 10px rgba(0, 0, 0, .25); margin-bottom: 14px; }
+.mu-cover.spin { animation: ring-spin 6s linear infinite; }
+.mu-hole { width: 34px; height: 34px; border-radius: 50%; background: var(--win-bg); box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .15); }
+.mu-title { font-size: 24px; font-weight: 700; }
+.mu-artist, .mu-time { color: var(--text-2); font-variant-numeric: tabular-nums; }
+.mu-ctrl { display: flex; align-items: center; gap: 18px; margin-top: 10px; }
+.mu-ctrl button { border: none; background: none; color: var(--text); font-size: 22px; transition: transform .15s var(--ease); }
+.mu-ctrl button:hover { transform: scale(1.12); }
+.mu-ctrl .mu-play { width: 64px; height: 64px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 22px; box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 45%, transparent); }
+.mu-play:disabled { opacity: .4; }
+.mu-warn { margin-top: 12px; }
+.mu-list { padding: 18px 12px; border-left: 1px solid rgba(0, 0, 0, .35); background: rgba(var(--fg), .03); }
+.mu-head { padding: 0 10px 10px; font-weight: 700; }
+.mu-row { width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px; border: none; border-radius: 10px; background: none; color: var(--text); text-align: left; transition: background .15s; }
+.mu-row:hover { background: rgba(var(--fg), .06); }
+.mu-row.on { background: rgba(var(--fg), .12); }
+.mu-row i { width: 36px; height: 36px; border-radius: 8px; flex: none; }
+.mu-row span { flex: 1; display: flex; flex-direction: column; }
+.mu-row small { color: var(--text-2); }
+.mu-eq { display: flex; align-items: flex-end; gap: 2px; height: 16px; }
+.mu-eq em { width: 3px; background: var(--accent); animation: eq .8s ease-in-out infinite alternate; }
+.mu-eq em:nth-child(2) { animation-delay: .2s; }
+.mu-eq em:nth-child(3) { animation-delay: .4s; }
+@keyframes eq { from { height: 3px; } to { height: 16px; } }

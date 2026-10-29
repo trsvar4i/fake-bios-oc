@@ -1,17 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { useStore, useLang } from "../../machine/store";
-import { useOs, type MenuItem } from "../osStore";
+import { isAvailable, useOs, type MenuItem } from "../osStore";
 import { HOME, TRASH, isTrashed, join, nameOf, parentOf, useFs } from "../fs";
 import { AppIcon } from "../AppIcon";
 import { stageScale } from "../util";
+import "./Finder.css";
 
 /** Что делает двойной щелчок по объекту: папку открывает, файл — в TextEdit. */
+export const isImage = (p: string) => /\.png$/i.test(p);
+
 export function openPath(path: string, winId?: number) {
   const fs = useFs.getState();
   if (fs.isDir(path)) {
     if (winId !== undefined) useOs.getState().update(winId, { arg: path });
     else useOs.getState().open("finder", path);
-  } else if (!isTrashed(path)) useOs.getState().open("textedit", path);
+  } else if (!isTrashed(path)) {
+    if (isImage(path)) {
+      const app = isAvailable("preview") ? "preview" : isAvailable("paint") ? "paint" : null;
+      if (app) useOs.getState().open(app, path);
+      else useOs.getState().notify("appstore", "Preview", path.split("/").pop() + " — install Preview from the App Store");
+    } else useOs.getState().open("textedit", path);
+  }
 }
 
 /** Пункты контекстного меню для файла или папки (Finder и рабочий стол). */
@@ -242,7 +251,9 @@ export function FileItem({ path, selected, renaming, onSelect, onOpen, onRenamed
       onDoubleClick={onOpen}
       onContextMenu={onMenu}
     >
-      <AppIcon name={fs.isDir(path) ? "folder" : "file"} size={64} />
+      {isImage(path) && fs.read(path)?.startsWith("data:image")
+        ? <img className="fd-thumb" src={fs.read(path)!} alt="" draggable={false} />
+        : <AppIcon name={fs.isDir(path) ? "folder" : isImage(path) ? "image" : "file"} size={64} />}
       {renaming ? (
         <input
           className="fd-rename"

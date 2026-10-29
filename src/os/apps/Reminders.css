@@ -1,0 +1,16 @@
+/* Reminders: стили приложения (вынесены из os.css) */
+.reminders { height: 100%; padding: 18px 26px; overflow: auto; }
+.rm-head { display: flex; justify-content: space-between; align-items: baseline; }
+.rm-head h1 { margin: 0; font-size: 34px; color: var(--accent); }
+.rm-count { font-size: 34px; color: var(--accent); font-weight: 600; }
+.rm-toggle { margin: 6px 0 12px; padding: 0; border: none; background: none; color: var(--accent); font-size: 15px; }
+.rm-list { display: flex; flex-direction: column; }
+.rm-item, .rm-new { display: flex; align-items: center; gap: 12px; min-height: 44px; border-bottom: 1px solid rgba(var(--fg), .08); animation: page-in .25s var(--ease) both; }
+.rm-item span { flex: 1; }
+.rm-item.done span { color: var(--text-2); }
+.rm-check { width: 22px; height: 22px; flex: none; padding: 0; border-radius: 50%; border: 2px solid rgba(var(--fg), .35); background: none; transition: background .2s, border-color .2s; }
+.rm-item.done .rm-check { border-color: var(--accent); background: radial-gradient(circle, var(--accent) 50%, transparent 55%); }
+.rm-del { border: none; background: none; color: var(--text-2); font-size: 22px; opacity: 0; transition: opacity .15s; }
+.rm-item:hover .rm-del { opacity: 1; }
+.rm-plus { width: 22px; text-align: center; color: var(--text-2); font-size: 22px; }
+.rm-new input { flex: 1; background: none; padding: 0; }

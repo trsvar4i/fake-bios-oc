@@ -4,6 +4,7 @@ import { HW } from "../../machine/hardware";
 import { readings, tempClass } from "../../machine/sensors";
 import { useOs } from "../osStore";
 import { APP_META } from "./meta";
+import "./TaskManager.css";
 
 interface Proc { key: string; name: string; cpu: number; mem: number; winId?: number }
 
@@ -12,15 +13,15 @@ export function TaskManager() {
   const s = useStore();
   const os = useOs();
   const { t, lang } = useLang();
-  const r = readings(s.saved, s.thermal);
+  const r = readings(s.saved, s.thermal, s);
   const [tab, setTab] = useState<"proc" | "perf">("proc");
-  const [hist, setHist] = useState<number[]>(() => Array(60).fill(6));
+  const [hist, setHist] = useState<number[]>(() => Array(60).fill(useStore.getState().load * 100));
   const [jit, setJit] = useState(0);
   const [sel, setSel] = useState<string | null>(null);
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      setHist((h) => [...h.slice(1), Math.max(2, Math.min(70, h[h.length - 1] + (Math.random() - 0.5) * 14))]);
+      setHist((h) => [...h.slice(1), Math.max(1, Math.min(100, useStore.getState().load * 100))]);
       setJit(Math.random());
     }, 1000);
     return () => clearInterval(id);
@@ -80,7 +81,8 @@ export function TaskManager() {
           </div>
           <table className="kv-table">
             <tbody>
-              <tr><td>{t("Speed", "Частота")}</td><td>{r.freq} GHz</td></tr>
+              <tr><td>{t("Speed", "Частота")}</td><td className={r.throttled ? "crit" : ""}>{r.freq} GHz{r.throttled ? t(" — throttling", " — перегрев, частота снижена") : ""}</td></tr>
+              <tr><td>{t("Power mode", "Режим питания")}</td><td>{{ quiet: t("Quiet", "Тихий"), balanced: t("Balanced", "Сбалансированный"), performance: t("Performance", "Производительность") }[s.power]}</td></tr>
               <tr><td>{t("Temperature", "Температура")}</td><td className={tempClass(r.temp)}>{r.temp.toFixed(1)} °C</td></tr>
               <tr><td>{t("CPU fan", "Вентилятор CPU")}</td><td>{r.rpm} RPM</td></tr>
               <tr><td>{t("Cores / logical processors", "Ядра / логические процессоры")}</td><td>{HW.cores} / {s.saved.smt ? HW.threads : HW.cores}</td></tr>

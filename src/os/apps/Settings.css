@@ -1,0 +1,69 @@
+/* Settings: стили приложения (вынесены из os.css) */
+.settings { display: grid; grid-template-columns: 240px 1fr; height: 100%; }
+.set-nav { display: flex; flex-direction: column; gap: 2px; padding: 14px 10px; background: rgba(var(--fg), .03); }
+.set-nav button { text-align: left; border: none; background: none; color: inherit; padding: 10px 14px; border-radius: 8px; }
+.set-nav button:hover { background: rgba(var(--fg), .07); }
+.set-nav button.on { background: rgba(var(--fg), .12); }
+.set-page { padding: 16px 28px; overflow: auto; }
+.set-row { display: flex; align-items: center; gap: 24px; }
+.set-row label { display: flex; flex-direction: column; gap: 6px; }
+.set-row input { padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(var(--fg), .2); background: rgba(0, 0, 0, .3); color: inherit; outline: none; }
+.set-note { opacity: .6; font-size: 15px; }
+.set-warn { padding: 12px 16px; border-radius: 10px; background: rgba(255, 180, 60, .12); border: 1px solid rgba(255, 180, 60, .4); }
+.set-sub { margin-top: 32px !important; }
+.set-form { display: flex; flex-direction: column; gap: 14px; max-width: 360px; }
+.set-form label { display: flex; flex-direction: column; gap: 6px; font-size: 15px; color: var(--text-2); }
+.set-form input { padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(var(--fg), .2); background: rgba(0, 0, 0, .3); color: var(--text); outline: none; }
+.set-form input:focus { border-color: var(--accent); }
+.set-form p { margin: 0; font-size: 15px; }
+.set-actions { display: flex; gap: 10px; }
+.set-form input, .set-row input { height: 34px; border-radius: 7px; border: none; background: rgba(var(--fg), .08); box-shadow: inset 0 0 0 1px rgba(var(--fg), .12); transition: box-shadow .15s; }
+.set-form input:focus, .set-row input:focus { box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--accent) 55%, transparent), inset 0 0 0 1px var(--accent); }
+.settings { grid-template-columns: 260px 1fr; }
+.set-nav { padding: 12px 10px; background: rgba(var(--fg), .03); border-right: 1px solid rgba(0, 0, 0, .35); }
+.set-nav button { height: 36px; padding: 0 12px; border-radius: 7px; font-size: 17px; transition: background .15s; }
+.set-nav button:hover { background: rgba(var(--fg), .06); }
+.set-nav button.on { background: var(--accent); color: #fff; }
+.set-page { animation: page-in .3s var(--ease) both; }
+.wp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 10px; }
+.wp-thumb { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 0; border: none; background: none; color: var(--text); font-size: 15px; text-align: center; }
+.wp-thumb .wallpaper-art { height: 116px; border-radius: 12px; box-shadow: inset 0 0 0 1px rgba(var(--fg), .12); outline: 3px solid transparent; outline-offset: 3px; transition: outline-color .2s, transform .2s var(--ease); }
+.wp-thumb:hover .wallpaper-art { transform: scale(1.03); }
+.wp-thumb.on .wallpaper-art { outline-color: var(--accent); }
+.set-switch { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 10px; background: rgba(var(--fg), .05); }
+.set-switch span { display: flex; flex-direction: column; }
+.set-switch small { color: var(--text-2); font-size: 14px; }
+.set-switch input { appearance: none; width: 44px; height: 26px; border-radius: 13px; background: rgba(var(--fg), .2); position: relative; transition: background .2s; }
+.set-switch input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .4); transition: transform .25s var(--ease); }
+.set-switch input:checked { background: var(--accent); }
+.set-switch input:checked::after { transform: translateX(18px); }
+.set-line { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding: 12px 16px; border-radius: 10px; background: rgba(var(--fg), .05); }
+.theme-pick { display: flex; gap: 20px; margin: 6px 0 12px; }
+.theme-opt { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0; border: none; background: none; color: var(--text); font-size: 15px; }
+.theme-prev { position: relative; width: 150px; height: 96px; border-radius: 12px; overflow: hidden; outline: 3px solid transparent; outline-offset: 3px; transition: outline-color .2s, transform .2s var(--ease); box-shadow: inset 0 0 0 1px rgba(var(--fg), .14); }
+.theme-opt:hover .theme-prev { transform: scale(1.04); }
+.theme-opt.on .theme-prev { outline-color: var(--accent); }
+.theme-prev i { position: absolute; left: 10px; right: 10px; top: 8px; height: 10px; border-radius: 5px; }
+.theme-prev b { position: absolute; left: 22px; top: 28px; width: 92px; height: 56px; border-radius: 8px; }
+.theme-opt.light .theme-prev { background: linear-gradient(135deg, #9ec5ff, #e1d4ff); }
+.theme-opt.light .theme-prev i, .theme-opt.light .theme-prev b { background: rgba(255, 255, 255, .85); }
+.theme-opt.dark .theme-prev { background: linear-gradient(135deg, #1a2050, #3a1f5a); }
+.theme-opt.dark .theme-prev i, .theme-opt.dark .theme-prev b { background: rgba(30, 30, 34, .9); }
+.theme-opt.auto .theme-prev { background: linear-gradient(135deg, #9ec5ff 50%, #1a2050 50%); }
+.theme-opt.auto .theme-prev i, .theme-opt.auto .theme-prev b { background: linear-gradient(135deg, rgba(255, 255, 255, .85) 50%, rgba(30, 30, 34, .9) 50%); }
+
+/* основные, обновление ПО, пользователи */
+.set-hint { display: block; color: var(--text-2); font-size: 13px; }
+.set-line > span { display: flex; flex-direction: column; }
+.set-input { height: 32px; width: 240px; padding: 0 10px; border: none; border-radius: 7px; background: rgba(var(--fg), .08); color: var(--text); outline: none; box-shadow: inset 0 0 0 1px rgba(var(--fg), .12); }
+.set-input:focus { box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--accent) 55%, transparent), inset 0 0 0 1px var(--accent); }
+.set-line + .set-switch, .set-switch + .set-line { margin-top: 12px; }
+.upd-card { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 12px; padding: 16px 18px; border-radius: 12px; background: rgba(var(--fg), .05); animation: page-in .3s var(--ease) both; }
+.upd-card > div { flex: 1; }
+.upd-new { margin-top: 8px; font-size: 15px; }
+.upd-bar { margin-top: 10px; }
+.users-list { display: flex; flex-direction: column; gap: 6px; }
+.users-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px; background: rgba(var(--fg), .05); }
+.users-name { flex: 1; }
+.users-name small { color: var(--text-2); }
+.users-add { display: flex; gap: 10px; margin-top: 12px; }

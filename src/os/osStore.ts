@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { APP_META } from "./apps/meta";
 import { HOME, join, useFs } from "./fs";
+import { prefsKey, setCurrentUser } from "./users";
 import { useStore } from "../machine/store";
 
 export type OsStage = "splash" | "lock" | "desktop" | "crash" | "leaving";
@@ -17,7 +18,7 @@ export const WORK = { top: MENUBAR_H, h: SCREEN_H - MENUBAR_H - DOCK_ZONE };
 /** длительности анимаций окон, мс (совпадают с os.css) */
 export const ANIM = { open: 280, close: 200, minimize: 460, zoom: 380 };
 
-export type Panel = "launchpad" | "spotlight" | "control" | "widgets" | "about" | "shortcuts" | "overview" | "notifications" | null;
+export type Panel = "launchpad" | "spotlight" | "control" | "widgets" | "about" | "shortcuts" | "overview" | "notifications" | "welcome" | null;
 
 export interface Notice { id: number; app: string; title: string; body: string; time: number }
 
@@ -45,6 +46,8 @@ export interface Win {
   phase?: "opening" | "closing" | "minimizing" | "restoring";
   /** плавный переход размеров (развернуть, прилипнуть) */
   anim?: boolean;
+  /** на каком рабочем столе окно (0…) */
+  space: number;
 }
 
 export interface Widget { id: number; kind: string; size: "s" | "m"; x: number; y: number }
@@ -68,11 +71,20 @@ export interface Prefs {
   events: Record<string, string[]>;
   /** оформление: светлое, тёмное или по времени суток */
   theme: "dark" | "light" | "auto";
+  /** режим питания: передаётся в модель машины (частота и нагрев) */
+  power: "quiet" | "balanced" | "performance";
+  /** приложения, установленные из Магазина */
+  installed: string[];
+  /** имя компьютера (Терминал, «Об этом компьютере») */
+  hostName: string;
+  /** 12-часовой формат времени */
+  hour12: boolean;
+  /** приветствие уже показано этому пользователю */
+  welcomed: boolean;
 }
 
 // ---------- настройки пользователя (переживают перезагрузку) ----------
-const OS_KEY = "kestrel.os";
-export const DEFAULT_DOCK = ["finder", "launchpad", "notes", "reminders", "calendar", "calculator", "clock", "terminal", "taskmgr", "settings"];
+export const DEFAULT_DOCK = ["finder", "launchpad", "appstore", "notes", "reminders", "calendar", "calculator", "clock", "terminal", "taskmgr", "settings"];
 const DEFAULT_PREFS: Prefs = {
   wallpaper: "aurora", notes: "", userName: "User", password: "", passwordHint: "", lastHardware: "",
   dock: DEFAULT_DOCK,
@@ -85,11 +97,17 @@ const DEFAULT_PREFS: Prefs = {
   reminders: [],
   events: {},
   theme: "dark",
+  power: "balanced",
+  installed: [],
+  hostName: "Kestrel",
+  hour12: false,
+  welcomed: false,
 };
 
-function loadPrefs(): Prefs {
+/** Настройки пользователя (по умолчанию — текущего). */
+function loadPrefs(id?: string): Prefs {
   try {
-    const raw = localStorage.getItem(OS_KEY);
+    const raw = localStorage.getItem(prefsKey(id));
     const p: Prefs = raw ? { ...DEFAULT_PREFS, ...JSON.parse(raw) } : { ...DEFAULT_PREFS };
     p.dock = p.dock.filter((a) => a === "launchpad" || APP_META[a]);
     return p;
@@ -98,12 +116,12 @@ function loadPrefs(): Prefs {
   }
 }
 function savePrefs(p: Prefs) {
-  try { localStorage.setItem(OS_KEY, JSON.stringify(p)); } catch { /* хранилище недоступно */ }
+  try { localStorage.setItem(prefsKey(), JSON.stringify(p)); } catch { /* хранилище недоступно */ }
 }
 
 interface OsState {
   stage: OsStage;
-  leaving: "shutdown" | "restart" | "firmware";
+  leaving: "shutdown" | "restart" | "firmware" | "update";
   windows: Win[];
   nextId: number;
   zTop: number;
@@ -126,6 +144,12 @@ interface OsState {
   /** уведомления (центр уведомлений) и показанный сейчас баннер */
   notices: Notice[];
   banner: number | null;
+  /** рабочие столы: сколько их и какой открыт; dir — откуда «въехал» текущий (для анимации) */
+  spaces: number;
+  space: number;
+  spaceDir: -1 | 0 | 1;
+  /** нагрузочный тест из Терминала (`stress`) идёт до этого момента */
+  stressUntil: number;
   /** переключатель приложений (⌥`): порядок приложений и выбранное */
   switcher: { apps: string[]; i: number } | null;
   prefs: Prefs;
@@ -148,6 +172,13 @@ interface OsState {
   dismiss: () => void;
   setPref: <K extends keyof Prefs>(k: K, v: Prefs[K]) => void;
   notify: (app: string, title: string, body?: string) => void;
+  /** перейти на рабочий стол; добавить; убрать (окна переезжают на соседний) */
+  goSpace: (i: number) => void;
+  addSpace: () => void;
+  removeSpace: (i: number) => void;
+  moveToSpace: (id: number, i: number) => void;
+  /** сменить пользователя: окна закрываются, загружаются его настройки и файлы */
+  switchUser: (id: string) => void;
 }
 
 /** Снять флаг анимации окна, когда она закончится. */
@@ -172,9 +203,13 @@ export const useOs = create<OsState>((set, get) => ({
   notices: [],
   banner: null,
   switcher: null,
+  spaces: 2,
+  space: 0,
+  spaceDir: 0,
+  stressUntil: 0,
   prefs: loadPrefs(),
 
-  reset: () => set({ stage: "splash", windows: [], nextId: 1, zTop: 10, panel: null, menu: null, ctx: null, sleeping: false }),
+  reset: () => set({ stage: "splash", windows: [], nextId: 1, zTop: 10, panel: null, menu: null, ctx: null, sleeping: false, space: 0, spaceDir: 0 }),
   setStage: (stage) => set({ stage, panel: null, menu: null, ctx: null }),
 
   open: (app, arg) => {
@@ -189,7 +224,11 @@ export const useOs = create<OsState>((set, get) => ({
     const meta = APP_META[app];
     set({ panel: null, menu: null, ctx: null, deskFocus: false });
     const existing = s.windows.find((w) => w.app === app && w.phase !== "closing" && (meta.single || (arg !== undefined && w.arg === arg && app !== "finder")));
-    if (existing) { get().focus(existing.id); return; }
+    if (existing) {
+      if (meta.single && arg !== undefined) get().update(existing.id, { arg });
+      get().focus(existing.id);
+      return;
+    }
     const z = s.zTop + 1;
     // каскад: новое окно чуть ниже и правее предыдущего, чтобы окна не ложились стопкой
     const last = [...s.windows].filter((w) => w.phase !== "closing" && !w.max && !w.snap).sort((a, b) => b.id - a.id)[0];
@@ -197,7 +236,7 @@ export const useOs = create<OsState>((set, get) => ({
     let y = MENUBAR_H + Math.max(16, Math.round((WORK.h - meta.h) / 2) - 70);
     if (last) { x = last.x + 44; y = last.y + 38; }
     if (x + meta.w > SCREEN_W - 20 || y + meta.h > WORK.top + WORK.h) { x = 140 + (s.nextId % 5) * 30; y = MENUBAR_H + 16 + (s.nextId % 5) * 26; }
-    const win: Win = { id: s.nextId, app, arg, x, y, w: meta.w, h: meta.h, z, min: false, max: false, snap: null, phase: "opening" };
+    const win: Win = { id: s.nextId, app, arg, x, y, w: meta.w, h: meta.h, z, min: false, max: false, snap: null, phase: "opening", space: s.space };
     set({ windows: [...s.windows, win], nextId: s.nextId + 1, zTop: z });
     after(ANIM.open, win.id, { phase: undefined });
   },
@@ -208,6 +247,8 @@ export const useOs = create<OsState>((set, get) => ({
   focus: (id) => {
     const w = get().windows.find((x) => x.id === id);
     if (!w) return;
+    // окно на другом рабочем столе — сначала переезжаем туда, как в macOS
+    if (w.space !== get().space) get().goSpace(w.space);
     const z = get().zTop + 1;
     if (w.min) {
       set((s) => ({ zTop: z, deskFocus: false, windows: s.windows.map((x) => (x.id === id ? { ...x, z, min: false, phase: "restoring" } : x)) }));
@@ -238,6 +279,30 @@ export const useOs = create<OsState>((set, get) => ({
   setMenu: (menu) => set({ menu, panel: null, ctx: null }),
   openCtx: (ctx) => set({ ctx, menu: null, panel: null }),
   dismiss: () => set({ panel: null, menu: null, ctx: null }),
+  goSpace: (i) => {
+    const s = get();
+    const to = Math.max(0, Math.min(s.spaces - 1, i));
+    if (to === s.space) return;
+    set({ space: to, spaceDir: to > s.space ? 1 : -1, menu: null, ctx: null, panel: s.panel === "overview" ? "overview" : null });
+    // класс анимации въезда снимается, чтобы следующий переход проигрался заново
+    window.setTimeout(() => useOs.setState({ spaceDir: 0 }), 450);
+  },
+  addSpace: () => set((s) => (s.spaces >= 6 ? {} : { spaces: s.spaces + 1 })),
+  removeSpace: (i) => set((s) => {
+    if (s.spaces <= 1) return {};
+    const dest = i === 0 ? 0 : i - 1;
+    return {
+      spaces: s.spaces - 1,
+      space: s.space > i || s.space === s.spaces - 1 ? Math.max(0, s.space - 1) : s.space,
+      windows: s.windows.map((w) => (w.space === i ? { ...w, space: dest } : w.space > i ? { ...w, space: w.space - 1 } : w)),
+    };
+  }),
+  moveToSpace: (id, i) => get().update(id, { space: i }),
+  switchUser: (id) => {
+    setCurrentUser(id);
+    useFs.getState().reload();
+    set({ prefs: loadPrefs(id), windows: [], notices: [], banner: null, panel: null, menu: null, ctx: null, space: 0, stressUntil: 0 });
+  },
   notify: (app, title, body = "") => {
     const n: Notice = { id: Date.now() + Math.random(), app, title, body, time: Date.now() };
     set((s) => ({ notices: [n, ...s.notices].slice(0, 30), banner: s.dnd ? s.banner : n.id }));
@@ -251,8 +316,16 @@ export const useOs = create<OsState>((set, get) => ({
     }),
 }));
 
+/** Новая учётная запись: настройки по умолчанию с её именем. */
+export function createUserPrefs(id: string, name: string) {
+  try { localStorage.setItem(prefsKey(id), JSON.stringify({ ...DEFAULT_PREFS, userName: name, wallpaper: ["ocean", "forest", "ember", "rose"][Math.floor(Math.random() * 4)] })); } catch { /* хранилище недоступно */ }
+}
+
+/** Приложение есть в системе: встроенное или установлено из Магазина. */
+export const isAvailable = (id: string) => !!APP_META[id] && (!APP_META[id].store || useOs.getState().prefs.installed.includes(id));
+
 /** Видимые окна (не свёрнутые и не закрывающиеся). */
-export const visibleWindows = (ws: Win[]) => ws.filter((w) => !w.min && w.phase !== "closing" && w.phase !== "minimizing");
+export const visibleWindows = (ws: Win[], space = useOs.getState().space) => ws.filter((w) => !w.min && w.phase !== "closing" && w.phase !== "minimizing" && w.space === space);
 
 /**
  * Раскладка «Все окна»: настоящие окна уменьшаются и встают сеткой.
@@ -280,4 +353,4 @@ export function overviewLayout(ws: Win[]): Record<number, { x: number; y: number
 }
 
 /** Верхнее видимое окно. */
-export const topWindow = (ws: Win[]) => ws.filter((w) => !w.min && w.phase !== "closing" && w.phase !== "minimizing").sort((a, b) => b.z - a.z)[0];
+export const topWindow = (ws: Win[]) => visibleWindows(ws).sort((a, b) => b.z - a.z)[0];

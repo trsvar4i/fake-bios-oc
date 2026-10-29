@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { ReactNode } from "react";
 import { DEVICE_IDS, type DeviceId } from "./hardware";
 import { PARAMS, clone, defaults, type Config } from "./params";
-import { activeCurve, initialThermal, stepThermal, type Thermal } from "./sensors";
+import { IDLE_WORKLOAD, activeCurve, initialThermal, stepThermal, type Power, type Thermal } from "./sensors";
 import type { Lang } from "./i18n";
 
 export type Phase = "off" | "post" | "setup" | "boot" | "os";
@@ -66,6 +66,10 @@ interface State {
   osUnstable: boolean;
   /** перезагрузка сразу в Setup (из ОС: «Restart to UEFI») */
   toSetup: boolean;
+  /** загрузка процессора 0…1 — задаёт ОС по запущенным программам */
+  load: number;
+  /** режим питания из пункта управления ОС */
+  power: Power;
 
   patch: (p: Partial<State>) => void;
   setParam: (id: string, v: unknown) => void;
@@ -86,6 +90,10 @@ interface State {
   powerOn: () => void;
   shutdown: () => void;
   tick: (dt: number) => void;
+  /** язык системы (тот же параметр, что в BIOS) — сразу записывается в CMOS */
+  setLanguage: (lang: "English" | "Русский") => void;
+  /** вернуть множитель и напряжение процессора в Auto и записать в CMOS (после сбоя) */
+  resetOverclock: () => void;
 }
 
 const initial = loadCmos();
@@ -107,6 +115,8 @@ export const useStore = create<State>((set, get) => ({
   hint: "",
   osUnstable: false,
   toSetup: false,
+  load: IDLE_WORKLOAD.load,
+  power: IDLE_WORKLOAD.power,
 
   patch: (p) => set(p),
   setParam: (id, v) => set((s) => ({ pending: { ...s.pending, [id]: v } })),
@@ -165,7 +175,20 @@ export const useStore = create<State>((set, get) => ({
   shutdown: () => set((s) => ({ phase: "off", override: null, dialog: null, pending: clone(s.saved) })),
 
   tick: (dt) =>
-    set((s) => ({ thermal: stepThermal(s.thermal, s.phase === "setup" ? s.pending : s.saved, dt) })),
+    set((s) => ({
+      thermal: stepThermal(s.thermal, s.phase === "setup" ? s.pending : s.saved, dt, s.phase === "os" ? { load: s.load, power: s.power } : IDLE_WORKLOAD),
+    })),
+  setLanguage: (language) => {
+    const c = { ...clone(get().saved), language };
+    writeCmos(c);
+    set((s) => ({ saved: c, pending: { ...s.pending, language } }));
+  },
+  resetOverclock: () => {
+    const d = defaults();
+    const c = { ...clone(get().saved), cpuRatio: d.cpuRatio, cpuVcore: d.cpuVcore };
+    writeCmos(c);
+    set({ saved: c, pending: clone(c) });
+  },
 }));
 
 /** Язык интерфейса: в Setup меняется сразу, как в настоящем BIOS. */

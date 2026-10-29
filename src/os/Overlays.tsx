@@ -1,7 +1,7 @@
 // Полноэкранные панели: Launchpad (все приложения) и Spotlight (поиск и быстрые действия).
 import { useEffect, useMemo, useState } from "react";
 import { useLang } from "../machine/store";
-import { useOs } from "./osStore";
+import { isAvailable, useOs } from "./osStore";
 import { APP_META } from "./apps/meta";
 import { AppIcon } from "./AppIcon";
 import { osPower } from "./power";
@@ -10,6 +10,7 @@ import { usePresence } from "./util";
 import { HOME, nameOf, parentOf, useFs } from "./fs";
 import { openPath } from "./apps/Finder";
 import { switcherCommit } from "./commands";
+import { WallpaperArt } from "./Wallpaper";
 import { OsLogo } from "./AppIcon";
 
 export function Launchpad() {
@@ -20,7 +21,7 @@ export function Launchpad() {
   useEffect(() => { if (os.panel === "launchpad") setQ(""); }, [os.panel]);
   if (!mounted) return null;
 
-  const apps = Object.values(APP_META).filter((m) => !m.hidden && m.title[lang].toLowerCase().includes(q.trim().toLowerCase()));
+  const apps = Object.values(APP_META).filter((m) => !m.hidden && isAvailable(m.id) && m.title[lang].toLowerCase().includes(q.trim().toLowerCase()));
   return (
     <div className={"launchpad" + (closing ? " closing" : "")} onPointerDown={() => os.dismiss()}>
       <input
@@ -74,7 +75,7 @@ export function Spotlight() {
     const value = calc(s);
     if (value !== null) out.push({ id: "calc", title: value, sub: t("Calculator", "Калькулятор"), glyph: "=", run: () => void navigator.clipboard?.writeText(value) });
     for (const m of Object.values(APP_META)) {
-      if (!m.hidden && (m.title.en.toLowerCase().includes(s) || m.title.ru.toLowerCase().includes(s)))
+      if (!m.hidden && isAvailable(m.id) && (m.title.en.toLowerCase().includes(s) || m.title.ru.toLowerCase().includes(s)))
         out.push({ id: m.id, title: m.title[lang], sub: t("Application", "Программа"), icon: m.icon, run: () => os.open(m.id) });
     }
     // файлы и папки пользователя (без Корзины)
@@ -157,6 +158,40 @@ export function AboutPanel() {
   );
 }
 
+/** Приветствие при первом входе: что умеет система и куда нажать дальше. */
+export function WelcomePanel() {
+  const os = useOs();
+  const { t } = useLang();
+  const { mounted, closing } = usePresence(os.panel === "welcome", 220);
+  if (!mounted) return null;
+  const close = () => { os.setPref("welcomed", true); os.dismiss(); };
+  const go = (fn: () => void) => () => { close(); fn(); };
+  const tips: [string, string, string, () => void][] = [
+    ["appstore", t("Get apps", "Установите программы"), t("Paint, Music and Preview are one click away in the App Store.", "Рисовалка, Музыка и Просмотр — в Магазине, одной кнопкой."), () => os.open("appstore")],
+    ["taskmgr", t("Watch the hardware", "Следите за железом"), t("Run `stress` in Terminal and watch temperature and fans react.", "Наберите `stress` в Терминале — температура и вентиляторы отзовутся."), () => os.open("terminal")],
+    ["settings", t("Make it yours", "Под себя"), t("Wallpaper, light theme, users, firmware updates.", "Обои, светлая тема, пользователи, обновление прошивки."), () => os.open("settings")],
+    ["launchpad", t("Shortcuts", "Сочетания клавиш"), t("Alt works as ⌘: Alt+` apps, Alt+↑ all windows, Alt+←/→ desktops.", "Alt работает как ⌘: Alt+` — программы, Alt+↑ — все окна, Alt+←/→ — рабочие столы."), () => os.setPanel("shortcuts")],
+  ];
+  return (
+    <div className={"modal-backdrop" + (closing ? " closing" : "")} onPointerDown={close}>
+      <div className="about-app welcome" onPointerDown={(e) => e.stopPropagation()}>
+        <OsLogo size={84} />
+        <h2>{t(`Welcome, ${os.prefs.userName}`, `Добро пожаловать, ${os.prefs.userName}`)}</h2>
+        <div className="about-ver">{t("Kestrel OS — Linux for people", "Kestrel OS — Linux для людей")}</div>
+        <div className="welcome-tips">
+          {tips.map(([icon, title, text, run]) => (
+            <button key={title} className="welcome-tip" onClick={go(run)}>
+              <AppIcon name={icon} size={46} />
+              <span><b>{title}</b><small>{text}</small></span>
+            </button>
+          ))}
+        </div>
+        <button className="set-btn primary" onClick={close}>{t("Let's go", "Поехали")}</button>
+      </div>
+    </div>
+  );
+}
+
 /** Справка: сочетания клавиш. ⌥ — Alt, ⌃ — Ctrl. */
 export function ShortcutsPanel() {
   const os = useOs();
@@ -197,9 +232,22 @@ export function OverviewBackdrop() {
   const { t } = useLang();
   const { mounted, closing } = usePresence(os.panel === "overview", 420);
   if (!mounted) return null;
-  const none = !os.windows.some((w) => !w.min && w.phase !== "closing");
+  const none = !os.windows.some((w) => !w.min && w.phase !== "closing" && w.space === os.space);
   return (
     <div className={"ov-backdrop" + (closing ? " closing" : "")} onPointerDown={(e) => { e.stopPropagation(); os.dismiss(); }}>
+      <div className="ov-spaces" onPointerDown={(e) => e.stopPropagation()}>
+        {Array.from({ length: os.spaces }, (_, i) => {
+          const n = os.windows.filter((w) => w.space === i && w.phase !== "closing").length;
+          return (
+            <div key={i} className={"ov-space" + (i === os.space ? " on" : "")} onClick={() => os.goSpace(i)}>
+              <WallpaperArt id={os.prefs.wallpaper} />
+              <span>{t(`Desktop ${i + 1}`, `Стол ${i + 1}`)}{n ? ` · ${n}` : ""}</span>
+              {os.spaces > 1 && <button className="ov-space-x" onClick={(e) => { e.stopPropagation(); os.removeSpace(i); }} aria-label="Remove">×</button>}
+            </div>
+          );
+        })}
+        {os.spaces < 6 && <button className="ov-space add" onClick={os.addSpace} title={t("New Desktop", "Новый рабочий стол")}>+</button>}
+      </div>
       <div className="ov-hint">{none ? t("No open windows", "Открытых окон нет") : t("Click a window to bring it forward", "Щёлкните окно, чтобы перейти к нему")}</div>
     </div>
   );

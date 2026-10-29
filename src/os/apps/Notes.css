@@ -1,0 +1,8 @@
+/* Notes: стили приложения (вынесены из os.css) */
+.notes { display: flex; flex-direction: column; height: 100%; }
+.notes-bar { display: flex; align-items: center; gap: 12px; padding: 6px 10px; border-bottom: 1px solid rgba(var(--fg), .08); }
+.notes-bar button { border: none; background: rgba(var(--fg), .08); color: inherit; padding: 4px 14px; border-radius: 6px; }
+.notes-saved { font-size: 13px; opacity: .5; }
+.notes textarea { flex: 1; resize: none; border: none; outline: none; padding: 14px 18px; background: #16181e; color: #e9eaf0; font-size: 17px; line-height: 1.5; }
+.notes-status { padding: 4px 12px; font-size: 13px; opacity: .6; border-top: 1px solid rgba(var(--fg), .08); }
+.notes textarea { background: var(--field-bg); color: var(--text); }

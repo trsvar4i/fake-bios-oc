@@ -2,19 +2,21 @@ import { useEffect, useRef, useState } from "react";
 import { useStore } from "../../machine/store";
 import { HW } from "../../machine/hardware";
 import { readings } from "../../machine/sensors";
-import { useOs } from "../osStore";
+import { isAvailable, useOs } from "../osStore";
 import { APP_META } from "./meta";
 import { osPower } from "../power";
 import { HOME, join, nameOf, parentOf, resolvePath as resolve, useFs } from "../fs";
 import { openPath } from "./Finder";
+import "./Terminal.css";
 
-const HOST = "Kestrel";
+/** имя компьютера из «Системных настроек» */
+const host = () => useOs.getState().prefs.hostName.replace(/\s+/g, "-") || "Kestrel";
 const BOOTED = Date.now();
 
 const COMMANDS = [
   "help", "clear", "exit", "echo", "date", "whoami", "hostname", "uname", "sw_vers", "uptime", "pwd", "ls", "cd", "cat",
   "open", "ps", "top", "sensors", "ifconfig", "ping", "history", "sudo", "neofetch", "system_profiler",
-  "mkdir", "touch", "rm", "mv",
+  "mkdir", "touch", "rm", "mv", "stress",
 ];
 
 /** Дата как в macOS: "Thu Oct 29 20:27:05". */
@@ -45,7 +47,7 @@ export function Terminal({ winId }: { winId: number }) {
   useEffect(() => { endRef.current?.scrollIntoView({ block: "end" }); }, [lines, sudo]);
   useEffect(() => { inputRef.current?.focus(); }, []);
 
-  const prompt = (dir = cwd) => `${userOf()}@${HOST} ${dir === "~" ? "~" : dir.split("/").pop()} % `;
+  const prompt = (dir = cwd) => `${userOf()}@${host()} ${dir === "~" ? "~" : dir.split("/").pop()} % `;
   const out = (...t: string[]): Line[] => t.map((text) => ({ text }));
   const err = (text: string): Line[] => [{ text, kind: "err" }];
 
@@ -82,6 +84,7 @@ export function Terminal({ winId }: { winId: number }) {
           "  sensors           temperatures, fans    neofetch        system summary",
           "  ifconfig          network               ping <host>     test the network",
           "  ps, top           running processes     history         previous commands",
+          "  stress [sec]      load all CPU cores    stress stop     stop the load test",
           "  clear             clear the screen      exit            close the window",
           "",
           "  sudo shutdown -h now | sudo reboot | sudo systemctl reboot --firmware-setup",
@@ -97,10 +100,10 @@ export function Terminal({ winId }: { winId: number }) {
       }
       case "date": return out(`${stamp(new Date())} ${new Date().getFullYear()}`);
       case "whoami": return out(userOf());
-      case "hostname": return out(`${HOST}.local`);
+      case "hostname": return out(`${host()}.local`);
       case "pwd": return out(cwd === "~" ? `/home/${userOf()}` : `/home/${userOf()}/${cwd.slice(2)}`);
       case "uname":
-        return out(args[0] === "-a" ? `Linux ${HOST} 6.11.0-kestrel #1 SMP PREEMPT_DYNAMIC x86_64 GNU/Linux` : "Linux");
+        return out(args[0] === "-a" ? `Linux ${host()} 6.11.0-kestrel #1 SMP PREEMPT_DYNAMIC x86_64 GNU/Linux` : "Linux");
       case "sw_vers": return out("ProductName:\t\tKestrel OS", "ProductVersion:\t\t1.0", "BuildVersion:\t\t2611");
       case "uptime": {
         const min = Math.floor((Date.now() - BOOTED) / 60000);
@@ -136,6 +139,13 @@ export function Terminal({ winId }: { winId: number }) {
         const text = fs.read(path);
         if (text === null) return err(fs.isDir(path) ? `cat: ${arg}: Is a directory` : `cat: ${arg}: No such file or directory`);
         return text ? out(...text.replace(/\n$/, "").split("\n")) : [];
+      }
+      case "stress": {
+        // нагрузить процессор на N секунд: растут температура и обороты, при плохом охлаждении — троттлинг
+        if (args[0] === "stop") { useOs.setState({ stressUntil: 0 }); return out("stress: stopped"); }
+        const sec = Math.min(300, Math.max(5, parseInt(args[0] ?? "30", 10) || 30));
+        useOs.setState({ stressUntil: Date.now() + sec * 1000 });
+        return out(`stress: hogging ${HW.threads} CPUs for ${sec}s (stop: stress stop)`, "Watch the temperature in Activity Monitor or the PC widget.");
       }
       case "mkdir": {
         const names = args.filter((a) => !a.startsWith("-"));
@@ -180,7 +190,7 @@ export function Terminal({ winId }: { winId: number }) {
         const name = (args[0] === "-a" ? args.slice(1) : args).join(" ").toLowerCase();
         if (!name || name === ".") { useOs.getState().open("finder", cwd); return []; }
         if (args[0] !== "-a" && fs.exists(resolve(cwd, args.join(" ")))) { openPath(resolve(cwd, args.join(" "))); return []; }
-        const app = Object.values(APP_META).find((m) => m.title.en.toLowerCase() === name || m.title.ru.toLowerCase() === name || m.id === name);
+        const app = Object.values(APP_META).find((m) => isAvailable(m.id) && (m.title.en.toLowerCase() === name || m.title.ru.toLowerCase() === name || m.id === name));
         if (!app) return err(`Unable to find application named '${args.slice(args[0] === "-a" ? 1 : 0).join(" ")}'`);
         useOs.getState().open(app.id);
         return [];
@@ -193,7 +203,7 @@ export function Terminal({ winId }: { winId: number }) {
           ...ws.map((w, i) => [String(1200 + i * 116), APP_META[w.app].title.en]),
         ];
         if (cmd === "top") {
-          const r = readings(c, s.thermal);
+          const r = readings(c, s.thermal, s);
           return out(
             `Processes: ${rows.length} total. CPU ${r.freq} GHz, ${r.temp.toFixed(0)}°C. PhysMem: 4.1G used, 27.9G unused.`, "",
             "PID    COMMAND              %CPU  MEM", ...rows.map(([pid, name], i) => `${pid.padEnd(6)} ${name.padEnd(20)} ${(0.3 + ((i * 7) % 5) * 0.6).toFixed(1).padStart(4)}  ${12 + i * 37}M`),
@@ -202,16 +212,16 @@ export function Terminal({ winId }: { winId: number }) {
         return out("  PID TTY           TIME CMD", ...rows.map(([pid, name]) => `${pid.padStart(5)} ttys000    0:00.12 ${name}`));
       }
       case "sensors": {
-        const r = readings(c, s.thermal);
+        const r = readings(c, s.thermal, s);
         return out(
           "k10temp-pci-00c3", `Tctl:         +${r.temp.toFixed(1)}°C`, "",
           "nct6799-isa-0290", `Vcore:         ${r.vcore.toFixed(3)} V`, `CPU_FAN1:      ${r.rpm} RPM  (${c.fanProfile})`, `SYS_FAN1:      ${r.sysRpm} RPM`,
         );
       }
       case "neofetch": case "system_profiler": {
-        const r = readings(c, s.thermal);
+        const r = readings(c, s.thermal, s);
         return out(
-          `${userOf()}@${HOST}`, "-".repeat(userOf().length + HOST.length + 1),
+          `${userOf()}@${host()}`, "-".repeat(userOf().length + host().length + 1),
           "OS:             Kestrel OS 1.0 x86_64",
           `Host:           ${HW.product}`,
           "Kernel:         6.11.0-kestrel",

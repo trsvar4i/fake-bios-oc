@@ -5,8 +5,10 @@ import { readings, tempClass } from "../machine/sensors";
 import { useOs } from "./osStore";
 import { osPower, playOs } from "./power";
 import { OsLogo } from "./AppIcon";
-import { useNow } from "./util";
+import { useNow, useTimeFormat } from "./util";
 import { WallpaperArt } from "./Wallpaper";
+import { currentUser, listUsers, peekPrefs } from "./users";
+import { FW_LATEST, flashFirmware } from "../machine/hardware";
 
 // Настройки BIOS, которые ОС «замечает» при загрузке.
 const HW_KEYS = ["virtualization", "hdAudio", "lanController", "usbStorage", "xmp", "cpuRatio", "smt", "secureBoot", "ftpm", "sataMode"];
@@ -82,7 +84,7 @@ export function Splash() {
 function LockWidgets() {
   const { t } = useLang();
   const saved = useStore((s) => s.saved);
-  const temp = useStore((s) => readings(s.saved, s.thermal).temp);
+  const temp = useStore((s) => readings(s.saved, s.thermal, s).temp);
   const issues = [
     !saved.lanController && t("No network", "Нет сети"),
     !saved.hdAudio && t("No sound", "Нет звука"),
@@ -98,6 +100,28 @@ function LockWidgets() {
         <svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1.5" /><path d="M10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4" /></svg>
         {t("CPU", "Процессор")} <b className={tempClass(temp)}>{Math.round(temp)}°C</b>
       </div>
+    </div>
+  );
+}
+
+/** Другие пользователи: смена учётной записи прямо на экране входа. */
+function LockUsers({ onPick }: { onPick: () => void }) {
+  const { t } = useLang();
+  const users = listUsers();
+  const cur = currentUser();
+  if (users.length < 2) return null;
+  return (
+    <div className="lock-users" onClick={(e) => e.stopPropagation()}>
+      {users.map((u) => {
+        const name = (u.id === cur ? useOs.getState().prefs.userName : peekPrefs(u.id).userName) ?? u.name;
+        return (
+          <button key={u.id} className={"lock-user" + (u.id === cur ? " on" : "")} title={t("Switch user", "Сменить пользователя")}
+            onClick={() => { if (u.id !== cur) useOs.getState().switchUser(u.id); onPick(); }}>
+            <span className="avatar">{name.slice(0, 1).toUpperCase()}</span>
+            <span>{name}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -138,6 +162,7 @@ export function LockScreen() {
   const [unlocking, setUnlocking] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const now = useNow();
+  const fmt = useTimeFormat();
   const locale = lang === "ru" ? "ru-RU" : "en-GB";
   const hasPw = prefs.password !== "";
 
@@ -186,7 +211,7 @@ export function LockScreen() {
       <div className="lock-wall"><WallpaperArt id={prefs.wallpaper} /></div>
       <div className="lock-top">
         <div className="lc-date">{now.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" })}</div>
-        <div className="lc-time">{now.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}</div>
+        <div className="lc-time">{fmt(now).replace(/\s?[AP]M$/i, "")}</div>
         <LockWidgets />
       </div>
 
@@ -227,28 +252,64 @@ export function LockScreen() {
         )}
       </div>
 
+      <LockUsers onPick={() => { setLogin(true); setPw(""); setWrong(0); }} />
       <LockPower onSleep={sleep} />
     </div>
   );
 }
 
 /** Сбой ядра из-за нестабильного разгона — как паника ядра на Mac: тёмный экран и перезагрузка. */
+const CRASH_RESTART_S = 12;
+
 export function Crash() {
   const { t } = useLang();
   const [show, setShow] = useState(false);
+  const [left, setLeft] = useState(CRASH_RESTART_S);
   useEffect(() => {
     const a = window.setTimeout(() => setShow(true), 400);
-    const b = window.setTimeout(() => useStore.getState().restart(), 6500);
-    return () => { clearTimeout(a); clearTimeout(b); };
+    const b = window.setInterval(() => setLeft((n) => n - 1), 1000);
+    return () => { clearTimeout(a); clearInterval(b); };
   }, []);
+  useEffect(() => { if (left <= 0) useStore.getState().restart(); }, [left]);
+  // восстановление: вернуть множитель и напряжение в Auto и перезагрузиться уже без разгона
+  const recover = () => { useStore.getState().resetOverclock(); useStore.getState().restart(); };
   return (
     <div className="crash" onContextMenu={(e) => e.preventDefault()}>
       <div className={"crash-box" + (show ? " in" : "")}>
         <OsLogo size={84} />
         <p>{t("Your computer restarted because of a problem.", "Компьютер перезагружается из-за ошибки.")}</p>
         <p className="crash-sub">{t("The processor overclock is unstable. In BIOS, raise CPU Core Voltage or lower the CPU Ratio.", "Разгон процессора нестабилен. В BIOS поднимите CPU Core Voltage или снизьте множитель.")}</p>
+        <div className="crash-actions">
+          <button className="crash-btn primary" onClick={recover}>{t("Reset overclock and restart", "Сбросить разгон и перезагрузить")}</button>
+          <button className="crash-btn" onClick={() => useStore.getState().restart()}>{t("Restart", "Перезагрузить")} ({Math.max(0, left)})</button>
+        </div>
         <p className="crash-code">panic(cpu 3): CLOCK_WATCHDOG_TIMEOUT</p>
       </div>
+    </div>
+  );
+}
+
+/** Установка прошивки: прогресс по этапам, затем перезагрузка уже с новой версией. */
+function FirmwareFlash() {
+  const { t } = useLang();
+  const [pct, setPct] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setPct((p) => Math.min(100, p + 1 + Math.random() * 2.2)), 90);
+    return () => clearInterval(id);
+  }, []);
+  useEffect(() => {
+    if (pct < 100) return;
+    flashFirmware(FW_LATEST);
+    const id = window.setTimeout(() => useStore.getState().restart(), 900);
+    return () => clearTimeout(id);
+  }, [pct]);
+  const stage = pct < 20 ? t("Verifying update…", "Проверка обновления…") : pct < 85 ? t("Writing firmware…", "Запись прошивки…") : t("Finishing…", "Завершение…");
+  return (
+    <div className="os-boot fade-in">
+      <OsLogo size={110} />
+      <div className="fw-bar"><i style={{ width: `${pct}%` }} /></div>
+      <div className="os-leaving">{stage} {Math.floor(pct)}%</div>
+      <div className="fw-warn">{t("Do not turn off your computer.", "Не выключайте компьютер.")}</div>
     </div>
   );
 }
@@ -256,6 +317,7 @@ export function Crash() {
 export function Leaving() {
   const { t } = useLang();
   const kind = useOs((s) => s.leaving);
+  if (kind === "update") return <FirmwareFlash />;
   const text = kind === "shutdown" ? t("Shutting down", "Завершение работы") : t("Restarting", "Перезагрузка");
   return (
     <div className="os-boot fade-in">

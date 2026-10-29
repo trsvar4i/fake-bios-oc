@@ -7,11 +7,12 @@ import { useOs, topWindow, type MenuItem } from "./osStore";
 import { APP_META } from "./apps/meta";
 import { AppIcon, OsLogo } from "./AppIcon";
 import { fmtTimer, timerLeft, useClockState } from "./apps/Clock";
+import { TRACKS, useMusic } from "./music";
 import { osPower } from "./power";
 import { cmd, editable } from "./commands";
 import { MenuList } from "./Menus";
 import { HOME, TRASH } from "./fs";
-import { useNow, usePresence } from "./util";
+import { useNow, usePresence, useTimeFormat } from "./util";
 
 interface Menu { id: string; title: React.ReactNode; bold?: boolean; items: MenuItem[] }
 
@@ -96,6 +97,9 @@ function useMenus(): Menu[] {
         { label: top?.max ? t("Exit Full Size", "Обычный размер") : t("Enter Full Size", "На весь экран"), run: cmd.zoom, disabled: !top },
         "sep",
         { label: t("All Windows", "Все окна"), run: () => os.setPanel("overview"), shortcut: "⌥↑" },
+        { label: t("New Desktop", "Новый рабочий стол"), run: os.addSpace, disabled: os.spaces >= 6 },
+        { label: t("Next Desktop", "Следующий рабочий стол"), run: () => os.goSpace(os.space + 1), disabled: os.space >= os.spaces - 1, shortcut: "⌥→" },
+        { label: t("Previous Desktop", "Предыдущий рабочий стол"), run: () => os.goSpace(os.space - 1), disabled: os.space === 0, shortcut: "⌥←" },
         { label: "Launchpad", run: () => os.setPanel("launchpad"), shortcut: "⌥L" },
         { label: "Spotlight", run: () => os.setPanel("spotlight"), shortcut: "⌃Space" },
         { label: t("Notifications", "Уведомления"), run: () => os.setPanel("notifications") },
@@ -113,6 +117,12 @@ function useMenus(): Menu[] {
         { label: t("Move Window to Right Half", "Окно в правую половину"), run: () => top && os.snap(top.id, "right"), disabled: !top },
         "sep",
         { label: t("Bring All to Front", "Все окна — на передний план"), run: cmd.bringAllToFront, disabled: !top },
+        "sep",
+        ...Array.from({ length: os.spaces }, (_, i): MenuItem => ({
+          label: t(`Move to Desktop ${i + 1}`, `Перенести на рабочий стол ${i + 1}`),
+          run: () => top && os.moveToSpace(top.id, i),
+          disabled: !top || top.space === i,
+        })),
         ...(visible.length ? (["sep"] as MenuItem[]) : []),
         ...visible.map((w): MenuItem => ({ label: winTitle(w), run: () => os.focus(w.id), check: top?.id === w.id })),
       ],
@@ -157,6 +167,11 @@ export function MenuBar() {
             <Dropdown open={os.menu === m.id} items={m.items} help={m.id === "help" ? menus.filter((x) => x.id !== "help") : undefined} />
           </div>
         ))}
+        <div className="spaces-dots" title={t("Desktops", "Рабочие столы")}>
+          {Array.from({ length: os.spaces }, (_, i) => (
+            <button key={i} className={i === os.space ? "on" : ""} onPointerDown={() => os.goSpace(i)} aria-label={`Desktop ${i + 1}`} />
+          ))}
+        </div>
       </div>
       <CenterIsland />
       <div className="island mb-right">
@@ -197,11 +212,13 @@ function CenterIsland() {
   const { lang, t } = useLang();
   const now = useNow();
   const clock = useClockState();
+  const fmt = useTimeFormat();
   const locale = lang === "ru" ? "ru-RU" : "en-GB";
   const banner = os.notices.find((n) => n.id === os.banner);
   const left = timerLeft(clock);
   const timing = clock.end !== null;
-  const width = banner ? 560 : timing ? 330 : 250;
+  const mu = useMusic();
+  const width = banner ? 560 : 250 + (timing ? 80 : 0) + (mu.playing ? 190 : 0);
   return (
     <button
       className={"island mb-center" + (banner ? " expanded" : "") + (os.panel === "notifications" ? " on" : "")}
@@ -217,7 +234,12 @@ function CenterIsland() {
       ) : (
         <span key="clock" className="isl-clock">
           <span className="isl-date">{now.toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" })}</span>
-          <b>{now.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}</b>
+          <b>{fmt(now)}</b>
+          {mu.playing && (
+            <span className="isl-music" title={t("Now Playing", "Сейчас играет")} onPointerDown={(e) => { e.stopPropagation(); os.open("music"); }}>
+              <b className="mu-eq"><em /><em /><em /></b>{TRACKS[mu.track].title}
+            </span>
+          )}
           {timing && left !== null && (
             <span className="isl-timer" title={t("Timer", "Таймер")}>
               <svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 2M9 2h6" /></svg>
@@ -236,11 +258,12 @@ function NotificationCenter() {
   const { lang, t } = useLang();
   const { mounted, closing } = usePresence(os.panel === "notifications", 220);
   const now = useNow();
+  const fmt = useTimeFormat();
   if (!mounted) return null;
   const locale = lang === "ru" ? "ru-RU" : "en-GB";
   const ago = (ms: number) => {
     const m = Math.floor((Date.now() - ms) / 60000);
-    return m < 1 ? t("now", "сейчас") : m < 60 ? t(`${m} min ago`, `${m} мин назад`) : new Date(ms).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+    return m < 1 ? t("now", "сейчас") : m < 60 ? t(`${m} min ago`, `${m} мин назад`) : fmt(new Date(ms));
   };
   return (
     <div className={"ncenter" + (closing ? " closing" : "")} onPointerDown={(e) => e.stopPropagation()}>
@@ -336,6 +359,19 @@ function ControlCenter() {
         ) : (
           <div className="cc-sub">{t("No output device: HD Audio is disabled in BIOS", "Нет устройства вывода: HD Audio выключен в BIOS")}</div>
         )}
+      </div>
+      <div className="cc-tile cc-wide">
+        <div className="cc-name">{t("Power mode", "Режим питания")}</div>
+        <div className="cc-seg">
+          {([["quiet", t("Quiet", "Тихий")], ["balanced", t("Balanced", "Баланс")], ["performance", t("Performance", "Мощность")]] as const).map(([id, name]) => (
+            <button key={id} className={os.prefs.power === id ? "on" : ""} onClick={() => os.setPref("power", id)}>{name}</button>
+          ))}
+        </div>
+        <div className="cc-sub">{{
+          quiet: t("Lower clock, cooler and quieter", "Ниже частота — холоднее и тише"),
+          balanced: t("Clock set in BIOS", "Частота как в BIOS"),
+          performance: t("+200 MHz boost, runs hotter", "+200 МГц, процессор горячее"),
+        }[os.prefs.power]}</div>
       </div>
       <button className="cc-tile cc-wide cc-link" onClick={() => os.setPanel("widgets")}>
         <div className="cc-name">{t("Edit Widgets…", "Изменить виджеты…")}</div>

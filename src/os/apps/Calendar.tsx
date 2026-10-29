@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLang } from "../../machine/store";
 import { useOs } from "../osStore";
+import "./Calendar.css";
 
 export const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 

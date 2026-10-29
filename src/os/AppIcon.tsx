@@ -16,6 +16,12 @@ const ICONS: Record<string, { bg: string; path: string }> = {
   trashFull: { bg: "linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,.12))", path: '<path d="M9 9h14l-1.4 16a2 2 0 0 1-2 1.8h-7.2a2 2 0 0 1-2-1.8z" fill="rgba(255,255,255,.25)"/><path d="M11 9l3-4 3 3 4-3 1 4" fill="#e9ebf0" stroke="#b8bcc6" stroke-width="1"/><path d="M7.5 9h17M13.5 13v10M18.5 13v10" stroke-width="1.5"/>' },
   folder: { bg: "transparent", path: '<path d="M3 9a2 2 0 0 1 2-2h7l2.5 2.5H27a2 2 0 0 1 2 2V25a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="#4ab0ff" stroke="none"/><path d="M3 12.5h26V25a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="#6cc4ff" stroke="none"/>' },
   file: { bg: "transparent", path: '<path d="M7 3h12l7 7v17a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="#fff" stroke="#c9ccd6" stroke-width="1"/><path d="M19 3v7h7" fill="#e4e6ec" stroke="#c9ccd6" stroke-width="1"/><g stroke="#a0a5b2" stroke-width="1.2"><path d="M9 15h13M9 18.5h13M9 22h9"/></g>' },
+  appstore: { bg: "linear-gradient(160deg,#4fc3ff,#1f5fd6)", path: '<path d="M9 12h14l-1.3 12.5a1.6 1.6 0 0 1-1.6 1.5h-8.2a1.6 1.6 0 0 1-1.6-1.5z" fill="rgba(255,255,255,.95)" stroke="none"/><path d="M12.5 12V10a3.5 3.5 0 0 1 7 0v2" stroke-width="2"/><path d="M13 19l2.2 2.2L19.5 17" stroke="#1f5fd6" stroke-width="2"/>' },
+  care: { bg: "linear-gradient(160deg,#5ef0b0,#0c9b6a)", path: '<path d="M16 5l9 3.5v6.5c0 5.5-4 9.5-9 12-5-2.5-9-6.5-9-12V8.5z" fill="rgba(255,255,255,.22)"/><path d="M16 11l1.6 3.4 3.4 1.6-3.4 1.6L16 21l-1.6-3.4-3.4-1.6 3.4-1.6z" fill="#fff" stroke="none"/>' },
+  paint: { bg: "linear-gradient(160deg,#ffe3b3,#ffb35c)", path: '<path d="M16 5c-6.6 0-11 4.6-11 10.2 0 4.4 3.4 7.8 7.4 7.8 2 0 2.2-1.6 1.5-2.7-.8-1.3.1-2.8 1.8-2.8H19c4.4 0 8-2.2 8-6.1C27 7.4 22 5 16 5z" fill="#fff" stroke="#c97c1c" stroke-width="1"/><g stroke="none"><circle cx="10.5" cy="14" r="2" fill="#ff453a"/><circle cx="14.5" cy="9.8" r="2" fill="#0a84ff"/><circle cx="20" cy="10" r="2" fill="#30d158"/><circle cx="23" cy="14.5" r="1.8" fill="#bf5af2"/></g>' },
+  preview: { bg: "linear-gradient(160deg,#e9f2ff,#9fc3ff)", path: '<rect x="5" y="7" width="22" height="18" rx="2.5" fill="#fff" stroke="#6d93d6" stroke-width="1.2"/><path d="M7.5 22l5.5-6.5 4 4.5 3-3 4.5 5z" fill="#4fbf6a" stroke="none"/><circle cx="21" cy="12" r="2.2" fill="#ffcc33" stroke="none"/>' },
+  music: { bg: "linear-gradient(160deg,#ff6b8b,#e5174a)", path: '<path d="M13 22V9l11-2.5v12.5" stroke-width="2"/><circle cx="10.5" cy="22" r="3" fill="#fff" stroke="none"/><circle cx="21.5" cy="19.5" r="3" fill="#fff" stroke="none"/>' },
+  image: { bg: "transparent", path: '<rect x="4" y="6" width="24" height="20" rx="2.5" fill="#fff" stroke="#c9ccd6"/><path d="M6.5 23l6-7 4.5 5 3.5-3.5L26 23z" fill="#4fbf6a" stroke="none"/><circle cx="21.5" cy="11.5" r="2.4" fill="#ffcc33" stroke="none"/>' },
   settings: { bg: "linear-gradient(160deg,#b4bccb,#5d6577)", path: '<path d="M25.80,12.24 L26.50,15.72 L24.20,16.22 L23.66,18.94 L25.59,20.27 L23.62,23.23 L21.64,21.95 L19.34,23.49 L19.76,25.80 L16.28,26.50 L15.78,24.20 L13.06,23.66 L11.73,25.59 L8.77,23.62 L10.05,21.64 L8.51,19.34 L6.20,19.76 L5.50,16.28 L7.80,15.78 L8.34,13.06 L6.41,11.73 L8.38,8.77 L10.36,10.05 L12.66,8.51 L12.24,6.20 L15.72,5.50 L16.22,7.80 L18.94,8.34 L20.27,6.41 L23.23,8.38 L21.95,10.36 L23.49,12.66Z" fill="rgba(255,255,255,.92)" stroke="none"/><circle cx="16" cy="16" r="4.2" fill="#6b7385" stroke="none"/><circle cx="16" cy="16" r="2" fill="rgba(255,255,255,.92)" stroke="none"/>' },
 };
 
@@ -31,7 +37,7 @@ function calendarIcon(): { bg: string; path: string } {
 }
 
 /** Иконки без плитки: папки и документы в Finder и на рабочем столе. */
-const BARE = new Set(["folder", "file"]);
+const BARE = new Set(["folder", "file", "image"]);
 
 export function AppIcon({ name, size = 40 }: { name: string; size?: number }) {
   const ic = name === "calendar" ? calendarIcon() : ICONS[name] ?? ICONS.pc;

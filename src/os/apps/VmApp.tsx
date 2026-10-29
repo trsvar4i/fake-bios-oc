@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useStore, useLang } from "../../machine/store";
 import { osPower, playOs } from "../power";
+import "./VmApp.css";
 
 interface Vm { name: string; os: string; cpus: number; ram: number; state: "off" | "starting" | "running" }
 

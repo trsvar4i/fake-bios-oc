@@ -1,4 +1,15 @@
 import { useEffect, useState } from "react";
+import { useOs } from "./osStore";
+import { useLang } from "../machine/store";
+
+/** Часы и минуты с учётом языка и 12/24-часового формата из настроек. */
+export function useTimeFormat() {
+  const { lang } = useLang();
+  const hour12 = useOs((s) => s.prefs.hour12);
+  return (d: Date, timeZone?: string) =>
+    // 12-часовой формат с AM/PM как в en-US; 24-часовой — по языку системы
+    d.toLocaleTimeString(hour12 ? "en-US" : lang === "ru" ? "ru-RU" : "en-GB", { hour: hour12 ? "numeric" : "2-digit", minute: "2-digit", hour12, timeZone });
+}
 
 /** Масштаб сцены 1920×1080 и её смещение на экране — для перевода координат мыши. */
 export function stageScale() {

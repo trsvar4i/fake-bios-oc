@@ -11,6 +11,11 @@ import { Calculator } from "./Calculator";
 import { Calendar } from "./Calendar";
 import { Reminders } from "./Reminders";
 import { Clock } from "./Clock";
+import { AppStore } from "./AppStore";
+import { Care } from "./Care";
+import { Paint } from "./Paint";
+import { Preview } from "./Preview";
+import { Music } from "./Music";
 
 export const APP_COMPONENTS: Record<string, ComponentType<{ winId: number }>> = {
   thispc: ThisPc,
@@ -25,4 +30,9 @@ export const APP_COMPONENTS: Record<string, ComponentType<{ winId: number }>> = 
   calendar: Calendar,
   reminders: Reminders,
   clock: Clock,
+  appstore: AppStore,
+  care: Care,
+  paint: Paint,
+  preview: Preview,
+  music: Music,
 };

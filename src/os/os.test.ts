@@ -72,7 +72,7 @@ describe("калькулятор", () => {
 });
 
 describe("«Все окна»", () => {
-  const win = (id: number, w: number, h: number): Win => ({ id, app: "notes", x: 100, y: 100, w, h, z: id, min: false, max: false, snap: null });
+  const win = (id: number, w: number, h: number): Win => ({ id, app: "notes", x: 100, y: 100, w, h, z: id, min: false, max: false, snap: null, space: 0 });
   it("раскладывает окна без наложений в пределах экрана", () => {
     const ws = [win(1, 800, 600), win(2, 1200, 700), win(3, 340, 540), win(4, 900, 600), win(5, 600, 400)];
     const cells = Object.values(overviewLayout(ws));
