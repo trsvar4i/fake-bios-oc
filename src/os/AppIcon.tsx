@@ -7,11 +7,37 @@ const ICONS: Record<string, { bg: string; path: string }> = {
   vm: { bg: "linear-gradient(135deg,#a77bff,#5b2fd1)", path: '<rect x="5" y="8" width="16" height="12" rx="1.5"/><rect x="11" y="13" width="16" height="12" rx="1.5"/>' },
   launchpad: { bg: "linear-gradient(135deg,#f5f6fa,#c9ccd6)", path: '<g fill="#5b6275" stroke="none"><rect x="7" y="7" width="5" height="5" rx="1.4"/><rect x="13.5" y="7" width="5" height="5" rx="1.4" fill="#ff6b5b"/><rect x="20" y="7" width="5" height="5" rx="1.4" fill="#ffb340"/><rect x="7" y="13.5" width="5" height="5" rx="1.4" fill="#3fc76d"/><rect x="13.5" y="13.5" width="5" height="5" rx="1.4" fill="#2f8cff"/><rect x="20" y="13.5" width="5" height="5" rx="1.4" fill="#a066ff"/><rect x="7" y="20" width="5" height="5" rx="1.4" fill="#ff5f9e"/><rect x="13.5" y="20" width="5" height="5" rx="1.4" fill="#2fc7c7"/><rect x="20" y="20" width="5" height="5" rx="1.4"/></g>' },
   disk: { bg: "linear-gradient(180deg,#e9ebf0,#a9aeba)", path: '<g stroke="#4b5263"><rect x="5" y="11" width="22" height="11" rx="2"/><path d="M9 18h2"/></g><circle cx="23" cy="18" r="1" fill="#3fd66d" stroke="none"/>' },
+  finder: { bg: "linear-gradient(160deg,#6cc1ff,#1a6cf0)", path: '<path d="M6 10.5a2 2 0 0 1 2-2h5l2 2.5h9a2 2 0 0 1 2 2V22a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2z" fill="rgba(255,255,255,.22)"/><path d="M6 14h20"/><path d="M13 18.5h6" stroke-width="1.6"/>' },
+  reminders: { bg: "linear-gradient(180deg,#ffffff,#e4e6ec)", path: '<g stroke="none"><circle cx="9" cy="10" r="2.6" fill="#2f8cff"/><circle cx="9" cy="16" r="2.6" fill="#ff9f0a"/><circle cx="9" cy="22" r="2.6" fill="#ff453a"/></g><g stroke="#b8bcc6" stroke-width="1.6"><path d="M14 10h11M14 16h11M14 22h9"/></g>' },
+  calculator: { bg: "linear-gradient(180deg,#5a5d66,#2a2c32)", path: '<g stroke="none"><rect x="6" y="6" width="9" height="9" rx="2" fill="#a5a8b0"/><rect x="17" y="6" width="9" height="9" rx="2" fill="#ff9f0a"/><rect x="6" y="17" width="9" height="9" rx="2" fill="#7a7d86"/><rect x="17" y="17" width="9" height="9" rx="2" fill="#ff9f0a"/></g><path d="M8.5 10.5h4M19.5 10.5h4M21.5 8.5v4M8.5 21.5h4M19.5 20h4M19.5 23h4" stroke-width="1.6"/>' },
+  clock: { bg: "linear-gradient(180deg,#2a2c32,#0e0f12)", path: '<circle cx="16" cy="16" r="11" fill="#fff" stroke="none"/><g stroke="#16181d" stroke-width="1.8"><path d="M16 16V9.5M16 16l4.5 3"/></g><path d="M16 16l-5 4" stroke="#ff9f0a" stroke-width="1.2"/><circle cx="16" cy="16" r="1.3" fill="#ff9f0a" stroke="none"/>' },
+  textedit: { bg: "linear-gradient(180deg,#f4f5f8,#cfd3dc)", path: '<rect x="8" y="5" width="16" height="22" rx="1.5" fill="#fff" stroke="#b8bcc6" stroke-width="1.2"/><g stroke="#8a8f9c" stroke-width="1.3"><path d="M11 10h10M11 13.5h10M11 17h7"/></g><path d="M17 25l8-8 2 2-8 8h-2z" fill="#ff9f0a" stroke="#c46a00" stroke-width="1"/>' },
+  trash: { bg: "linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,.12))", path: '<path d="M9 9h14l-1.4 16a2 2 0 0 1-2 1.8h-7.2a2 2 0 0 1-2-1.8z" fill="rgba(255,255,255,.25)"/><path d="M7.5 9h17M13 9V7h6v2M13.5 13v10M18.5 13v10" stroke-width="1.5"/>' },
+  trashFull: { bg: "linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,.12))", path: '<path d="M9 9h14l-1.4 16a2 2 0 0 1-2 1.8h-7.2a2 2 0 0 1-2-1.8z" fill="rgba(255,255,255,.25)"/><path d="M11 9l3-4 3 3 4-3 1 4" fill="#e9ebf0" stroke="#b8bcc6" stroke-width="1"/><path d="M7.5 9h17M13.5 13v10M18.5 13v10" stroke-width="1.5"/>' },
+  folder: { bg: "transparent", path: '<path d="M3 9a2 2 0 0 1 2-2h7l2.5 2.5H27a2 2 0 0 1 2 2V25a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="#4ab0ff" stroke="none"/><path d="M3 12.5h26V25a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="#6cc4ff" stroke="none"/>' },
+  file: { bg: "transparent", path: '<path d="M7 3h12l7 7v17a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="#fff" stroke="#c9ccd6" stroke-width="1"/><path d="M19 3v7h7" fill="#e4e6ec" stroke="#c9ccd6" stroke-width="1"/><g stroke="#a0a5b2" stroke-width="1.2"><path d="M9 15h13M9 18.5h13M9 22h9"/></g>' },
   settings: { bg: "linear-gradient(135deg,#9aa3b5,#4b5263)", path: '<circle cx="16" cy="16" r="4"/><path d="M16 5v4M16 23v4M5 16h4M23 16h4M8.2 8.2l2.8 2.8M21 21l2.8 2.8M8.2 23.8l2.8-2.8M21 11l2.8-2.8"/>' },
 };
 
+/** Календарь показывает сегодняшнее число, как настоящий. */
+function calendarIcon(): { bg: string; path: string } {
+  const d = new Date();
+  const wd = d.toLocaleDateString("en-GB", { weekday: "short" }).toUpperCase();
+  return {
+    bg: "linear-gradient(180deg,#ffffff,#eceef2)",
+    path: `<text x="16" y="10" text-anchor="middle" font-size="6" font-weight="700" fill="#ff3b30" stroke="none" font-family="-apple-system,Inter,sans-serif">${wd}</text>` +
+      `<text x="16" y="26" text-anchor="middle" font-size="16" font-weight="400" fill="#1d1d1f" stroke="none" font-family="-apple-system,Inter,sans-serif">${d.getDate()}</text>`,
+  };
+}
+
+/** Иконки без плитки: папки и документы в Finder и на рабочем столе. */
+const BARE = new Set(["folder", "file"]);
+
 export function AppIcon({ name, size = 40 }: { name: string; size?: number }) {
-  const ic = ICONS[name] ?? ICONS.pc;
+  const ic = name === "calendar" ? calendarIcon() : ICONS[name] ?? ICONS.pc;
+  if (BARE.has(name)) {
+    return <svg className="file-icon" viewBox="0 0 32 32" width={size} height={size} dangerouslySetInnerHTML={{ __html: ic.path }} />;
+  }
   return (
     <span className="app-icon" style={{ width: size, height: size, background: ic.bg, borderRadius: size * 0.22 }}>
       <svg viewBox="0 0 32 32" width={size * 0.72} height={size * 0.72} dangerouslySetInnerHTML={{ __html: ic.path }} />

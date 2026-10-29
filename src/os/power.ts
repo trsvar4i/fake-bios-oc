@@ -21,4 +21,12 @@ export const osPower = {
   restart: () => leave("restart", () => useStore.getState().restart()),
   restartToFirmware: () => leave("firmware", () => useStore.getState().restartToSetup()),
   lock: () => useOs.getState().setStage("lock"),
+  /** сон: экран гаснет, пробуждение — на экран блокировки */
+  sleep: () => { useOs.getState().dismiss(); useOs.setState({ sleeping: true }); },
+  /** завершить сеанс: все программы закрываются, остаётся экран входа */
+  logout: () => {
+    const os = useOs.getState();
+    os.windows.forEach((w) => os.close(w.id));
+    window.setTimeout(() => useOs.getState().setStage("lock"), 260);
+  },
 };

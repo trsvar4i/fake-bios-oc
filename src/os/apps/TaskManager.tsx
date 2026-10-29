@@ -28,12 +28,12 @@ export function TaskManager() {
 
   const cpuNow = hist[hist.length - 1];
   const sys: Proc[] = [
-    { key: "sys", name: "System", cpu: 0.4, mem: 12 },
-    { key: "dwm", name: t("Desktop Window Manager", "Диспетчер окон рабочего стола"), cpu: 1.2, mem: 88 },
-    { key: "shell", name: "Kestrel Shell Host", cpu: 0.6, mem: 142 },
-    { key: "def", name: t("Security Service", "Служба безопасности"), cpu: 0.9, mem: 196 },
-    ...(s.saved.hdAudio ? [{ key: "aud", name: t("Audio Service", "Служба звука"), cpu: 0.1, mem: 18 }] : []),
-    ...(s.saved.lanController ? [{ key: "net", name: t("Network Service", "Сетевая служба"), cpu: 0.2, mem: 24 }] : []),
+    { key: "kernel", name: "kernel_task", cpu: 0.4, mem: 12 },
+    { key: "ws", name: "WindowServer", cpu: 1.2, mem: 88 },
+    { key: "dock", name: "Dock", cpu: 0.6, mem: 142 },
+    { key: "spot", name: t("Spotlight", "Spotlight"), cpu: 0.9, mem: 196 },
+    ...(s.saved.hdAudio ? [{ key: "aud", name: "coreaudiod", cpu: 0.1, mem: 18 }] : []),
+    ...(s.saved.lanController ? [{ key: "net", name: "networkd", cpu: 0.2, mem: 24 }] : []),
   ];
   const apps: Proc[] = os.windows.map((w, i) => ({
     key: "w" + w.id, name: APP_META[w.app].title[lang], cpu: 0.5 + ((jit * 7 + i * 3) % 5), mem: 60 + i * 37, winId: w.id,
@@ -64,7 +64,7 @@ export function TaskManager() {
           </table>
           <div className="tm-foot">
             <button disabled={!selected?.winId} onClick={() => { if (selected?.winId) { os.close(selected.winId); setSel(null); } }}>
-              {t("End task", "Снять задачу")}
+              {t("Quit Process", "Завершить процесс")}
             </button>
           </div>
         </div>

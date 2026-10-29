@@ -3,14 +3,17 @@ import { useStore, useLang } from "../../machine/store";
 import { HW } from "../../machine/hardware";
 import { useOs } from "../osStore";
 import { osPower, playOs } from "../power";
+import { WALLPAPERS } from "../wallpapers";
+import { WallpaperArt } from "../Wallpaper";
+import { DEFAULT_DOCK } from "../osStore";
 
-const WALLPAPERS = ["aurora", "ember", "forest", "graphite"];
 
 export function Settings() {
   const { t } = useLang();
   const [page, setPage] = useState("personal");
   const pages: [string, string][] = [
-    ["personal", t("Personalization", "Персонализация")],
+    ["personal", t("Wallpaper", "Обои")],
+    ["dock", t("Desktop & Dock", "Рабочий стол и Dock")],
     ["account", t("Account", "Учётная запись")],
     ["sound", t("Sound", "Звук")],
     ["recovery", t("Recovery", "Восстановление")],
@@ -25,6 +28,7 @@ export function Settings() {
       </nav>
       <div className="set-page" key={page}>
         {page === "personal" && <Personal />}
+        {page === "dock" && <DockPage />}
         {page === "account" && <Account />}
         {page === "sound" && <Sound />}
         {page === "recovery" && <Recovery />}
@@ -35,15 +39,43 @@ export function Settings() {
 }
 
 function Personal() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const wp = useOs((s) => s.prefs.wallpaper);
   return (
     <>
-      <h2>{t("Background", "Фон")}</h2>
+      <h2>{t("Wallpaper", "Обои")}</h2>
+      <p className="set-note">{t("The accent color of buttons and highlights follows the wallpaper.", "Цвет кнопок и выделения подстраивается под обои.")}</p>
       <div className="wp-grid">
-        {WALLPAPERS.map((w) => (
-          <button key={w} className={"wp-thumb wp-" + w + (wp === w ? " on" : "")} onClick={() => useOs.getState().setPref("wallpaper", w)} />
+        {Object.entries(WALLPAPERS).map(([id, w]) => (
+          <button key={id} className={"wp-thumb" + (wp === id ? " on" : "")} onClick={() => useOs.getState().setPref("wallpaper", id)}>
+            <WallpaperArt id={id} />
+            <span>{w.name[lang]}</span>
+          </button>
         ))}
+      </div>
+    </>
+  );
+}
+
+function DockPage() {
+  const { t } = useLang();
+  const prefs = useOs((s) => s.prefs);
+  const set = useOs.getState().setPref;
+  return (
+    <>
+      <h2>Dock</h2>
+      <label className="set-switch">
+        <span>{t("Magnification", "Увеличение")}<small>{t("Icons grow under the pointer", "Иконки растут под указателем")}</small></span>
+        <input type="checkbox" checked={prefs.dockMagnify} onChange={(e) => set("dockMagnify", e.target.checked)} />
+      </label>
+      <div className="set-line">
+        <span>{t("Apps in Dock", "Приложений в Dock")}: {prefs.dock.length}</span>
+        <button className="set-btn" onClick={() => set("dock", DEFAULT_DOCK)}>{t("Restore Defaults", "Вернуть по умолчанию")}</button>
+      </div>
+      <h2 className="set-sub">{t("Widgets", "Виджеты")}</h2>
+      <div className="set-line">
+        <span>{t("On desktop", "На рабочем столе")}: {prefs.widgets.length}</span>
+        <button className="set-btn primary" onClick={() => useOs.getState().setPanel("widgets")}>{t("Edit Widgets…", "Изменить виджеты…")}</button>
       </div>
     </>
   );

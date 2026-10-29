@@ -7,6 +7,9 @@ import { AppIcon } from "./AppIcon";
 import { osPower } from "./power";
 import { WALLPAPERS } from "./wallpapers";
 import { usePresence } from "./util";
+import { HOME, nameOf, parentOf, useFs } from "./fs";
+import { openPath } from "./apps/Finder";
+import { OsLogo } from "./AppIcon";
 
 export function Launchpad() {
   const os = useOs();
@@ -16,7 +19,7 @@ export function Launchpad() {
   useEffect(() => { if (os.panel === "launchpad") setQ(""); }, [os.panel]);
   if (!mounted) return null;
 
-  const apps = Object.values(APP_META).filter((m) => m.title[lang].toLowerCase().includes(q.trim().toLowerCase()));
+  const apps = Object.values(APP_META).filter((m) => !m.hidden && m.title[lang].toLowerCase().includes(q.trim().toLowerCase()));
   return (
     <div className={"launchpad" + (closing ? " closing" : "")} onPointerDown={() => os.dismiss()}>
       <input
@@ -70,8 +73,14 @@ export function Spotlight() {
     const value = calc(s);
     if (value !== null) out.push({ id: "calc", title: value, sub: t("Calculator", "Калькулятор"), glyph: "=", run: () => void navigator.clipboard?.writeText(value) });
     for (const m of Object.values(APP_META)) {
-      if (m.title.en.toLowerCase().includes(s) || m.title.ru.toLowerCase().includes(s))
+      if (!m.hidden && (m.title.en.toLowerCase().includes(s) || m.title.ru.toLowerCase().includes(s)))
         out.push({ id: m.id, title: m.title[lang], sub: t("Application", "Программа"), icon: m.icon, run: () => os.open(m.id) });
+    }
+    // файлы и папки пользователя (без Корзины)
+    for (const path of Object.keys(useFs.getState().nodes)) {
+      if (path === HOME || path.includes("/.Trash") || !nameOf(path).toLowerCase().includes(s)) continue;
+      const dir = useFs.getState().isDir(path);
+      out.push({ id: path, title: nameOf(path), sub: parentOf(path).replace(HOME, "~"), icon: dir ? "folder" : "file", run: () => openPath(path) });
     }
     for (const [id, w] of Object.entries(WALLPAPERS)) {
       const name = w.name[lang];
@@ -87,7 +96,7 @@ export function Spotlight() {
     ];
     for (const [keys, title, run] of actions)
       if (keys.some((k) => s.includes(k) || k.startsWith(s))) out.push({ id: "act-" + title, title, sub: t("System action", "Действие системы"), glyph: "⏻", run });
-    return out.slice(0, 7);
+    return out.slice(0, 8);
   }, [q, lang]);
 
   if (!mounted) return null;
@@ -122,6 +131,58 @@ export function Spotlight() {
             ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** «О программе»: иконка, название, версия — как маленькое окно macOS. */
+export function AboutPanel() {
+  const os = useOs();
+  const { lang, t } = useLang();
+  const { mounted, closing } = usePresence(os.panel === "about", 200);
+  if (!mounted || !os.aboutApp) return null;
+  const meta = APP_META[os.aboutApp];
+  return (
+    <div className={"modal-backdrop" + (closing ? " closing" : "")} onPointerDown={() => os.dismiss()}>
+      <div className="about-app" onPointerDown={(e) => e.stopPropagation()}>
+        {meta ? <AppIcon name={meta.icon} size={110} /> : <OsLogo size={110} />}
+        <h2>{meta ? meta.title[lang] : "Kestrel OS"}</h2>
+        <div className="about-ver">{t("Version", "Версия")} 1.0 (2611)</div>
+        <div className="about-foot">© 2026 Kestrel Systems</div>
+        <button className="set-btn" onClick={() => os.dismiss()}>OK</button>
+      </div>
+    </div>
+  );
+}
+
+/** Справка: сочетания клавиш. ⌥ — Alt, ⌃ — Ctrl. */
+export function ShortcutsPanel() {
+  const os = useOs();
+  const { t } = useLang();
+  const { mounted, closing } = usePresence(os.panel === "shortcuts", 200);
+  if (!mounted) return null;
+  const rows: [string, string][] = [
+    ["⌃ Space", "Spotlight"],
+    ["⌥ L", "Launchpad"],
+    ["⌥ N", t("New window", "Новое окно")],
+    ["⇧ ⌥ N", t("New folder", "Новая папка")],
+    ["⌥ W", t("Close window", "Закрыть окно")],
+    ["⌥ M", t("Minimize", "Свернуть")],
+    ["⌥ H", t("Hide app", "Скрыть программу")],
+    ["⌥ Q", t("Quit app", "Завершить программу")],
+    ["⌥ ,", t("System Settings", "Системные настройки")],
+    ["Esc", t("Close menus and panels", "Закрыть меню и панели")],
+    ["Enter", t("Rename in Finder", "Переименовать в Finder")],
+    ["Delete", t("Move to Trash", "В Корзину")],
+  ];
+  return (
+    <div className={"modal-backdrop" + (closing ? " closing" : "")} onPointerDown={() => os.dismiss()}>
+      <div className="about-app keys" onPointerDown={(e) => e.stopPropagation()}>
+        <h2>{t("Keyboard Shortcuts", "Сочетания клавиш")}</h2>
+        <div className="about-ver">{t("⌥ is Alt, ⌃ is Ctrl on a PC keyboard", "⌥ — это Alt, ⌃ — Ctrl на клавиатуре ПК")}</div>
+        <table className="keys-table"><tbody>{rows.map(([k, v]) => <tr key={k}><td><kbd>{k}</kbd></td><td>{v}</td></tr>)}</tbody></table>
+        <button className="set-btn primary" onClick={() => os.dismiss()}>OK</button>
       </div>
     </div>
   );

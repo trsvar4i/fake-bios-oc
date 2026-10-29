@@ -1,22 +1,30 @@
 // Строка меню сверху (как в macOS): меню системы, меню активного приложения, статус и часы.
+// Все пункты рабочие; ⌥ — это Alt, ⌃ — Ctrl.
+import { useState } from "react";
 import { useStore, useLang } from "../machine/store";
 import { sound, useMuted, useVolume } from "../machine/audio";
-import { useOs, topWindow } from "./osStore";
+import { useOs, topWindow, type MenuItem } from "./osStore";
 import { APP_META } from "./apps/meta";
 import { OsLogo } from "./AppIcon";
 import { osPower } from "./power";
+import { cmd, editable } from "./commands";
+import { MenuList } from "./Menus";
+import { HOME, TRASH } from "./fs";
 import { useNow, usePresence } from "./util";
 
-type Item = { label: string; run?: () => void; disabled?: boolean; check?: boolean } | "sep";
-interface Menu { id: string; title: React.ReactNode; bold?: boolean; items: Item[] }
+interface Menu { id: string; title: React.ReactNode; bold?: boolean; items: MenuItem[] }
 
 function useMenus(): Menu[] {
   const os = useOs();
   const { t, lang } = useLang();
   const top = topWindow(os.windows);
   const app = top ? APP_META[top.app] : null;
-  const appName = app ? app.title[lang] : "Kestrel";
+  const appName = app ? app.title[lang] : "Finder";
   const visible = os.windows.filter((w) => w.phase !== "closing");
+  const text = editable();
+  const hasSel = !!text && text.selectionStart !== text.selectionEnd;
+  const winTitle = (w: (typeof visible)[number]) =>
+    APP_META[w.app].title[lang] + (w.arg ? ` — ${w.arg === HOME ? os.prefs.userName : w.arg === TRASH ? t("Trash", "Корзина") : w.arg.split("/").pop()}` : "");
 
   return [
     {
@@ -25,80 +33,94 @@ function useMenus(): Menu[] {
       items: [
         { label: t("About This PC", "Об этом компьютере"), run: () => os.open("thispc") },
         "sep",
-        { label: t("System Settings…", "Системные настройки…"), run: () => os.open("settings") },
+        { label: t("System Settings…", "Системные настройки…"), run: cmd.settings, shortcut: "⌥," },
+        { label: "Launchpad", run: () => os.setPanel("launchpad"), shortcut: "⌥L" },
         "sep",
-        { label: t("Restart to UEFI (BIOS)…", "Перезагрузить в UEFI (BIOS)…"), run: osPower.restartToFirmware },
+        { label: t("Sleep", "Режим сна"), run: osPower.sleep },
         { label: t("Restart…", "Перезагрузить…"), run: osPower.restart },
+        { label: t("Restart to UEFI (BIOS)…", "Перезагрузить в UEFI (BIOS)…"), run: osPower.restartToFirmware },
         { label: t("Shut Down…", "Выключить…"), run: osPower.shutdown },
         "sep",
         { label: t("Lock Screen", "Заблокировать экран"), run: osPower.lock },
-        { label: t(`Log Out ${os.prefs.userName}…`, `Завершить сеанс «${os.prefs.userName}»…`), run: osPower.lock },
+        { label: t(`Log Out ${os.prefs.userName}…`, `Завершить сеанс «${os.prefs.userName}»…`), run: osPower.logout },
       ],
     },
     {
       id: "app",
       title: appName,
       bold: true,
-      items: app && top
-        ? [
-            { label: t(`Minimize ${appName}`, `Свернуть «${appName}»`), run: () => os.minimize(top.id) },
-            "sep",
-            { label: t(`Quit ${appName}`, `Завершить «${appName}»`), run: () => os.windows.filter((w) => w.app === top.app).forEach((w) => os.close(w.id)) },
-          ]
-        : [
-            { label: t("About Kestrel OS", "О Kestrel OS"), run: () => os.open("thispc") },
-            "sep",
-            { label: t("Settings…", "Настройки…"), run: () => os.open("settings") },
-          ],
+      items: [
+        { label: t(`About ${appName}`, `О программе «${appName}»`), run: () => cmd.about(top?.app ?? "finder") },
+        "sep",
+        { label: t("Settings…", "Настройки…"), run: cmd.settings, shortcut: "⌥," },
+        "sep",
+        { label: t(`Hide ${appName}`, `Скрыть «${appName}»`), run: cmd.hideApp, disabled: !top, shortcut: "⌥H" },
+        { label: t("Hide Others", "Скрыть остальные"), run: cmd.hideOthers, disabled: !top, shortcut: "⇧⌥H" },
+        { label: t("Show All", "Показать все"), run: cmd.showAll, disabled: !visible.some((w) => w.min) },
+        "sep",
+        { label: t(`Quit ${appName}`, `Завершить «${appName}»`), run: cmd.quitApp, disabled: !top, shortcut: "⌥Q" },
+      ],
     },
     {
       id: "file",
       title: t("File", "Файл"),
       items: [
-        { label: t("New Window", "Новое окно"), run: () => top && os.open(top.app), disabled: !app || !!app.single },
-        { label: t("Open Terminal", "Открыть Терминал"), run: () => os.open("terminal") },
+        { label: top && top.app !== "finder" ? t("New Window", "Новое окно") : t("New Finder Window", "Новое окно Finder"), run: cmd.newWindow, shortcut: "⌥N", disabled: !!app?.single },
+        { label: t("New Folder", "Новая папка"), run: cmd.newFolder, shortcut: "⇧⌥N" },
+        { label: t("New Text Document", "Новый текстовый документ"), run: () => cmd.newTextFile() },
         "sep",
-        { label: t("Close Window", "Закрыть окно"), run: () => top && os.close(top.id), disabled: !top },
+        { label: t("Open Terminal", "Открыть Терминал"), run: () => os.open("terminal") },
+        { label: t("Go to Trash", "Открыть Корзину"), run: () => os.open("finder", TRASH) },
+        "sep",
+        { label: t("Close Window", "Закрыть окно"), run: cmd.closeWindow, disabled: !top, shortcut: "⌥W" },
       ],
     },
     {
       id: "edit",
       title: t("Edit", "Правка"),
       items: [
-        { label: t("Undo", "Отменить"), disabled: true },
-        { label: t("Redo", "Повторить"), disabled: true },
+        { label: t("Undo", "Отменить"), run: cmd.undo, disabled: !text, shortcut: "⌃Z" },
+        { label: t("Redo", "Повторить"), run: cmd.redo, disabled: !text, shortcut: "⇧⌃Z" },
         "sep",
-        { label: t("Cut", "Вырезать"), disabled: true },
-        { label: t("Copy", "Копировать"), disabled: true },
-        { label: t("Paste", "Вставить"), disabled: true },
+        { label: t("Cut", "Вырезать"), run: cmd.cut, disabled: !hasSel, shortcut: "⌃X" },
+        { label: t("Copy", "Копировать"), run: cmd.copy, disabled: !hasSel, shortcut: "⌃C" },
+        { label: t("Paste", "Вставить"), run: cmd.paste, disabled: !text, shortcut: "⌃V" },
+        { label: t("Select All", "Выбрать все"), run: cmd.selectAll, disabled: !text, shortcut: "⌃A" },
       ],
     },
     {
       id: "view",
       title: t("View", "Вид"),
       items: [
-        { label: top?.max ? t("Exit Full Size", "Обычный размер") : t("Enter Full Size", "На весь экран"), run: () => top && os.toggleMax(top.id), disabled: !top },
+        { label: top?.max ? t("Exit Full Size", "Обычный размер") : t("Enter Full Size", "На весь экран"), run: cmd.zoom, disabled: !top },
         "sep",
-        { label: "Launchpad", run: () => os.setPanel("launchpad") },
-        { label: "Spotlight", run: () => os.setPanel("spotlight") },
+        { label: "Launchpad", run: () => os.setPanel("launchpad"), shortcut: "⌥L" },
+        { label: "Spotlight", run: () => os.setPanel("spotlight"), shortcut: "⌃Space" },
+        { label: t("Edit Widgets…", "Изменить виджеты…"), run: () => os.setPanel("widgets") },
+        { label: t("Control Center", "Пункт управления"), run: () => os.setPanel("control") },
       ],
     },
     {
       id: "window",
       title: t("Window", "Окно"),
       items: [
-        { label: t("Minimize", "Свернуть"), run: () => top && os.minimize(top.id), disabled: !top },
-        { label: t("Zoom", "Изменить масштаб"), run: () => top && os.toggleMax(top.id), disabled: !top },
+        { label: t("Minimize", "Свернуть"), run: cmd.minimize, disabled: !top, shortcut: "⌥M" },
+        { label: t("Zoom", "Изменить масштаб"), run: cmd.zoom, disabled: !top },
         { label: t("Move Window to Left Half", "Окно в левую половину"), run: () => top && os.snap(top.id, "left"), disabled: !top },
         { label: t("Move Window to Right Half", "Окно в правую половину"), run: () => top && os.snap(top.id, "right"), disabled: !top },
-        ...(visible.length ? (["sep"] as Item[]) : []),
-        ...visible.map((w): Item => ({ label: APP_META[w.app].title[lang], run: () => os.focus(w.id), check: top?.id === w.id })),
+        "sep",
+        { label: t("Bring All to Front", "Все окна — на передний план"), run: cmd.bringAllToFront, disabled: !top },
+        ...(visible.length ? (["sep"] as MenuItem[]) : []),
+        ...visible.map((w): MenuItem => ({ label: winTitle(w), run: () => os.focus(w.id), check: top?.id === w.id })),
       ],
     },
     {
       id: "help",
       title: t("Help", "Справка"),
-      items: [{ label: t("Kestrel OS Help", "Справка Kestrel OS"), run: () => os.setPanel("spotlight") }],
+      items: [
+        { label: t("Keyboard Shortcuts", "Сочетания клавиш"), run: () => os.setPanel("shortcuts") },
+        { label: t("Terminal Commands", "Команды Терминала"), run: () => os.open("terminal") },
+      ],
     },
   ];
 }
@@ -117,7 +139,12 @@ export function MenuBar() {
   const silent = !saved.hdAudio || muted || volume === 0;
 
   return (
-    <div className="menubar" onPointerDown={(e) => e.stopPropagation()}>
+    <div
+      className="menubar"
+      // меню не забирает фокус у текстового поля — иначе «Правка» не знала бы, с чем работать
+      onPointerDown={(e) => { e.stopPropagation(); if (!(e.target as HTMLElement).closest("input")) e.preventDefault(); }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <div className="mb-left">
         {menus.map((m) => (
           <div key={m.id} className="mb-menu">
@@ -128,14 +155,14 @@ export function MenuBar() {
             >
               {m.title}
             </button>
-            <Dropdown open={os.menu === m.id} items={m.items} />
+            <Dropdown open={os.menu === m.id} items={m.items} help={m.id === "help" ? menus.filter((x) => x.id !== "help") : undefined} />
           </div>
         ))}
       </div>
       <div className="mb-right">
-        <span className={"mb-ico" + (saved.lanController ? "" : " off")} title={saved.lanController ? "Ethernet" : t("No network", "Нет сети")}>
+        <button className={"mb-ico" + (saved.lanController ? "" : " off")} onPointerDown={() => os.setPanel("control")} title={saved.lanController ? "Ethernet" : t("No network", "Нет сети")}>
           <svg viewBox="0 0 24 24"><path d="M12 4v5M7 13V9h10v4M4 20v-4h6v4zM14 20v-4h6v4z" />{!saved.lanController && <path d="M3 3l18 18" />}</svg>
-        </span>
+        </button>
         <button className="mb-ico" onPointerDown={() => os.setPanel("control")} title={t("Sound", "Звук")}>
           <svg viewBox="0 0 24 24">
             <path d="M4 9h4l5-4v14l-5-4H4z" />
@@ -151,31 +178,34 @@ export function MenuBar() {
         <button className={"mb-ico" + (os.panel === "control" ? " on" : "")} onPointerDown={() => os.setPanel("control")} title={t("Control Center", "Пункт управления")}>
           <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="6" rx="3" /><circle cx="15" cy="8" r="1.6" className="fill" /><rect x="3" y="13" width="18" height="6" rx="3" /><circle cx="9" cy="16" r="1.6" className="fill" /></svg>
         </button>
-        <span className="mb-clock">{clock}</span>
+        <button className="mb-clock" onPointerDown={() => os.open("calendar")}>{clock}</button>
       </div>
       <ControlCenter />
     </div>
   );
 }
 
-function Dropdown({ open, items }: { open: boolean; items: Item[] }) {
+/** Выпадающее меню. У «Справки» сверху поиск по всем пунктам меню, как в macOS. */
+function Dropdown({ open, items, help }: { open: boolean; items: MenuItem[]; help?: Menu[] }) {
+  const { t } = useLang();
   const { mounted, closing } = usePresence(open, 160);
+  const [q, setQ] = useState("");
   if (!mounted) return null;
+  const query = q.trim().toLowerCase();
+  const found: MenuItem[] = help && query
+    ? help.flatMap((m) => m.items.filter((it) => it !== "sep" && !it.disabled && it.label.toLowerCase().includes(query)))
+    : [];
   return (
     <div className={"dropdown" + (closing ? " closing" : "")}>
-      {items.map((it, i) =>
-        it === "sep" ? <div key={i} className="dd-sep" /> : (
-          <button
-              key={i}
-              className="dd-item"
-              disabled={it.disabled}
-              onClick={() => { useOs.getState().dismiss(); it.run?.(); }}
-            >
-              <span className="dd-check">{it.check ? "✓" : ""}</span>
-              {it.label}
-            </button>
-        ),
+      {help && (
+        <div className="dd-search">
+          <input autoFocus value={q} placeholder={t("Search menus", "Поиск по меню")} onChange={(e) => setQ(e.target.value)} />
+        </div>
       )}
+      {help && query && (found.length
+        ? <><MenuList items={found} onPick={() => setQ("")} /><div className="dd-sep" /></>
+        : <div className="dd-none">{t("No results", "Ничего не найдено")}</div>)}
+      <MenuList items={items} />
     </div>
   );
 }
@@ -226,6 +256,9 @@ function ControlCenter() {
           <div className="cc-sub">{t("No output device: HD Audio is disabled in BIOS", "Нет устройства вывода: HD Audio выключен в BIOS")}</div>
         )}
       </div>
+      <button className="cc-tile cc-wide cc-link" onClick={() => os.setPanel("widgets")}>
+        <div className="cc-name">{t("Edit Widgets…", "Изменить виджеты…")}</div>
+      </button>
     </div>
   );
 }

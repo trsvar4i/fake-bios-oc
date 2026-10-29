@@ -4,6 +4,7 @@ import { MENUBAR_H, SCREEN_W, WORK, useOs, type Win } from "./osStore";
 import { APP_META } from "./apps/meta";
 import { APP_COMPONENTS } from "./apps";
 import { stageScale } from "./util";
+import { HOME, TRASH, nameOf } from "./fs";
 
 const MIN_W = 380;
 const MIN_H = 240;
@@ -28,6 +29,10 @@ export function Window({ win, active }: { win: Win; active: boolean }) {
   const os = useOs();
   const { lang } = useLang();
   const meta = APP_META[win.app];
+  const user = useOs((s) => s.prefs.userName);
+  // заголовок: у Finder — папка, у TextEdit — имя файла
+  const title = win.arg === undefined ? meta.title[lang]
+    : win.arg === HOME ? user : win.arg === TRASH ? (lang === "ru" ? "Корзина" : "Trash") : win.arg === "disk" ? "Kestrel HD" : nameOf(win.arg);
   const Body = APP_COMPONENTS[win.app];
   const el = useRef<HTMLDivElement>(null);
   const drag = useRef<{ px: number; py: number; x: number; y: number } | null>(null);
@@ -136,7 +141,7 @@ export function Window({ win, active }: { win: Win; active: boolean }) {
               <svg viewBox="0 0 12 12"><path className="fill" d="M3.2 7.6 7.6 3.2H3.2zM8.8 4.4 4.4 8.8h4.4z" /></svg>
             </button>
           </div>
-          <span className="win-name">{meta.title[lang]}</span>
+          <span className="win-name">{title}</span>
         </div>
         <div className="win-body">
           <Body winId={win.id} />

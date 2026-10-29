@@ -6,6 +6,7 @@ import { useOs } from "./osStore";
 import { osPower, playOs } from "./power";
 import { OsLogo } from "./AppIcon";
 import { useNow } from "./util";
+import { WallpaperArt } from "./Wallpaper";
 
 // Настройки BIOS, которые ОС «замечает» при загрузке.
 const HW_KEYS = ["virtualization", "hdAudio", "lanController", "usbStorage", "xmp", "cpuRatio", "smt", "secureBoot", "ftpm", "sataMode"];
@@ -135,7 +136,6 @@ export function LockScreen() {
   const [wrong, setWrong] = useState(0);
   const [shake, setShake] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
-  const [asleep, setAsleep] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const now = useNow();
   const locale = lang === "ru" ? "ru-RU" : "en-GB";
@@ -157,12 +157,11 @@ export function LockScreen() {
   };
 
   const back = () => { setLogin(false); setPw(""); };
-  const sleep = () => { setAsleep(true); back(); };
+  const sleep = () => { back(); osPower.sleep(); };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (unlocking) return;
-      if (asleep) { setAsleep(false); return; }
+      if (unlocking || useOs.getState().sleeping) return;
       if (!login) {
         setLogin(true);
         // первая буква не теряется: она сразу попадает в поле пароля
@@ -174,15 +173,17 @@ export function LockScreen() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [login, asleep, unlocking, hasPw, pw]);
+  }, [login, unlocking, hasPw, pw]);
 
   useEffect(() => { if (login) input.current?.focus(); }, [login]);
 
   return (
     <div
-      className={"lock wp-" + prefs.wallpaper + (login ? " blur" : "") + (unlocking ? " unlocking" : "")}
-      onClick={() => !login && setLogin(true)}
+      className={"lock" + (login ? " blur" : "") + (unlocking ? " unlocking" : "")}
+      onClick={() => !login && !useOs.getState().sleeping && setLogin(true)}
+      onContextMenu={(e) => e.preventDefault()}
     >
+      <div className="lock-wall"><WallpaperArt id={prefs.wallpaper} /></div>
       <div className="lock-top">
         <div className="lc-date">{now.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" })}</div>
         <div className="lc-time">{now.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}</div>
@@ -227,34 +228,27 @@ export function LockScreen() {
       </div>
 
       <LockPower onSleep={sleep} />
-      {asleep && <div className="sleep" onClick={(e) => { e.stopPropagation(); setAsleep(false); }} />}
     </div>
   );
 }
 
-/** Критическая ошибка: нестабильный разгон. Через пару секунд — перезагрузка. */
+/** Сбой ядра из-за нестабильного разгона — как паника ядра на Mac: тёмный экран и перезагрузка. */
 export function Crash() {
   const { t } = useLang();
-  const [pct, setPct] = useState(0);
+  const [show, setShow] = useState(false);
   useEffect(() => {
-    const id = window.setInterval(() => setPct((p) => Math.min(100, p + 3 + Math.floor(Math.random() * 7))), 140);
-    return () => clearInterval(id);
+    const a = window.setTimeout(() => setShow(true), 400);
+    const b = window.setTimeout(() => useStore.getState().restart(), 6500);
+    return () => { clearTimeout(a); clearTimeout(b); };
   }, []);
-  useEffect(() => {
-    if (pct < 100) return;
-    const id = window.setTimeout(() => useStore.getState().restart(), 1200);
-    return () => clearTimeout(id);
-  }, [pct]);
   return (
-    <div className="crash">
-      <div className="crash-mark">!</div>
-      <h1>{t("Kestrel OS stopped to protect your data.", "Kestrel OS остановлена, чтобы защитить ваши данные.")}</h1>
-      <p>{t("Collecting error info", "Сбор сведений об ошибке")}: {pct}% — {t("the PC will restart automatically.", "компьютер перезагрузится автоматически.")}</p>
-      <p className="crash-code">STOP: CLOCK_WATCHDOG_TIMEOUT</p>
-      <p className="crash-tip">
-        {t("Hint: the CPU overclock is unstable. In BIOS raise CPU Core Voltage or lower CPU Ratio.",
-          "Подсказка: разгон процессора нестабилен. В BIOS поднимите CPU Core Voltage или снизьте множитель.")}
-      </p>
+    <div className="crash" onContextMenu={(e) => e.preventDefault()}>
+      <div className={"crash-box" + (show ? " in" : "")}>
+        <OsLogo size={84} />
+        <p>{t("Your computer restarted because of a problem.", "Компьютер перезагружается из-за ошибки.")}</p>
+        <p className="crash-sub">{t("The processor overclock is unstable. In BIOS, raise CPU Core Voltage or lower the CPU Ratio.", "Разгон процессора нестабилен. В BIOS поднимите CPU Core Voltage или снизьте множитель.")}</p>
+        <p className="crash-code">panic(cpu 3): CLOCK_WATCHDOG_TIMEOUT</p>
+      </div>
     </div>
   );
 }
