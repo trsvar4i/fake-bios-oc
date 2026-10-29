@@ -1,9 +1,10 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { useLang } from "../machine/store";
-import { MENUBAR_H, SCREEN_W, WORK, useOs, type Win } from "./osStore";
+import { MENUBAR_H, SCREEN_W, WORK, overviewLayout, useOs, visibleWindows, type Win } from "./osStore";
 import { APP_META } from "./apps/meta";
 import { APP_COMPONENTS } from "./apps";
 import { stageScale } from "./util";
+import { AppIcon } from "./AppIcon";
 import { HOME, TRASH, nameOf } from "./fs";
 
 const MIN_W = 380;
@@ -40,6 +41,14 @@ export function Window({ win, active }: { win: Win; active: boolean }) {
   const [hint, setHint] = useState<Snap>(null);
 
   const g = win.max ? geometry("max") : win.snap ? geometry(win.snap) : win;
+  const fixed = !!meta.fixed;
+
+  // «Все окна»: окно плавно уменьшается в свою ячейку сетки
+  const overview = os.panel === "overview";
+  const cell = overview ? overviewLayout(visibleWindows(os.windows))[win.id] : undefined;
+  const ovTransform = cell
+    ? `translate(${cell.x - g.x}px, ${cell.y - g.y}px) scale(${cell.w / g.w})`
+    : undefined;
 
   // сворачивание «джинном»: окно втягивается в свою иконку в доке и возвращается из неё
   useLayoutEffect(() => {
@@ -85,7 +94,7 @@ export function Window({ win, active }: { win: Win; active: boolean }) {
       y: Math.max(MENUBAR_H, Math.min(WORK.top + WORK.h - 40, d.y + (e.clientY - d.py) / k)),
     });
     const { px, py } = toStage(e);
-    setHint(snapAt(px, py));
+    setHint(fixed ? null : snapAt(px, py));
   };
   const onTitleUp = (e: React.PointerEvent) => {
     if (!drag.current) return;
@@ -93,6 +102,7 @@ export function Window({ win, active }: { win: Win; active: boolean }) {
     setHint(null);
     const { px, py } = toStage(e);
     const s = snapAt(px, py);
+    if (fixed) return;
     if (s === "max") os.snap(win.id, null, true);
     else if (s) os.snap(win.id, s);
   };
@@ -117,7 +127,7 @@ export function Window({ win, active }: { win: Win; active: boolean }) {
     <div className={"rs rs-" + dir} onPointerDown={onResizeDown(dir)} onPointerMove={onResizeMove} onPointerUp={onResizeUp} />
   );
 
-  const cls = ["win", active && "active", (win.max || win.snap) && "docked", win.anim && "anim", win.phase]
+  const cls = ["win", active && "active", (win.max || win.snap) && "docked", win.anim && "anim", win.phase, overview && "in-overview"]
     .filter(Boolean).join(" ");
 
   return (
@@ -126,10 +136,11 @@ export function Window({ win, active }: { win: Win; active: boolean }) {
       <div
         ref={el}
         className={cls}
-        style={{ left: g.x, top: g.y, width: g.w, height: g.h, zIndex: win.z }}
-        onPointerDown={(e) => { e.stopPropagation(); if (!active) os.focus(win.id); os.dismiss(); }}
+        style={{ left: g.x, top: g.y, width: g.w, height: g.h, zIndex: win.z, transform: ovTransform }}
+        onPointerDown={(e) => { e.stopPropagation(); if (!active || overview) os.focus(win.id); os.dismiss(); }}
       >
-        <div className="win-title" onPointerDown={onTitleDown} onPointerMove={onTitleMove} onPointerUp={onTitleUp} onDoubleClick={() => os.toggleMax(win.id)}>
+        {overview && <div className="ov-catch" title={title} />}
+        <div className="win-title" onPointerDown={onTitleDown} onPointerMove={onTitleMove} onPointerUp={onTitleUp} onDoubleClick={() => !fixed && os.toggleMax(win.id)}>
           <div className="traffic">
             <button className="tl tl-close" onClick={() => os.close(win.id)} aria-label="Close">
               <svg viewBox="0 0 12 12"><path d="M3.5 3.5l5 5M8.5 3.5l-5 5" /></svg>
@@ -137,16 +148,16 @@ export function Window({ win, active }: { win: Win; active: boolean }) {
             <button className="tl tl-min" onClick={() => os.minimize(win.id)} aria-label="Minimize">
               <svg viewBox="0 0 12 12"><path d="M2.5 6h7" /></svg>
             </button>
-            <button className="tl tl-zoom" onClick={() => os.toggleMax(win.id)} aria-label="Zoom">
+            <button className="tl tl-zoom" disabled={fixed} onClick={() => os.toggleMax(win.id)} aria-label="Zoom">
               <svg viewBox="0 0 12 12"><path className="fill" d="M3.2 7.6 7.6 3.2H3.2zM8.8 4.4 4.4 8.8h4.4z" /></svg>
             </button>
           </div>
-          <span className="win-name">{title}</span>
+          <span className="win-name"><AppIcon name={meta.icon} size={20} />{title}</span>
         </div>
         <div className="win-body">
           <Body winId={win.id} />
         </div>
-        {!win.max && !win.snap && (
+        {!win.max && !win.snap && !fixed && (
           <>
             {handle("e")}
             {handle("s")}

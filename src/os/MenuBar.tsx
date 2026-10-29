@@ -5,7 +5,8 @@ import { useStore, useLang } from "../machine/store";
 import { sound, useMuted, useVolume } from "../machine/audio";
 import { useOs, topWindow, type MenuItem } from "./osStore";
 import { APP_META } from "./apps/meta";
-import { OsLogo } from "./AppIcon";
+import { AppIcon, OsLogo } from "./AppIcon";
+import { fmtTimer, timerLeft, useClockState } from "./apps/Clock";
 import { osPower } from "./power";
 import { cmd, editable } from "./commands";
 import { MenuList } from "./Menus";
@@ -94,8 +95,10 @@ function useMenus(): Menu[] {
       items: [
         { label: top?.max ? t("Exit Full Size", "Обычный размер") : t("Enter Full Size", "На весь экран"), run: cmd.zoom, disabled: !top },
         "sep",
+        { label: t("All Windows", "Все окна"), run: () => os.setPanel("overview"), shortcut: "⌥↑" },
         { label: "Launchpad", run: () => os.setPanel("launchpad"), shortcut: "⌥L" },
         { label: "Spotlight", run: () => os.setPanel("spotlight"), shortcut: "⌃Space" },
+        { label: t("Notifications", "Уведомления"), run: () => os.setPanel("notifications") },
         { label: t("Edit Widgets…", "Изменить виджеты…"), run: () => os.setPanel("widgets") },
         { label: t("Control Center", "Пункт управления"), run: () => os.setPanel("control") },
       ],
@@ -131,11 +134,7 @@ export function MenuBar() {
   const { lang, t } = useLang();
   const muted = useMuted();
   const volume = useVolume();
-  const now = useNow();
   const menus = useMenus();
-  const locale = lang === "ru" ? "ru-RU" : "en-GB";
-  const clock = now.toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" }) + "  " +
-    now.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
   const silent = !saved.hdAudio || muted || volume === 0;
 
   return (
@@ -145,7 +144,7 @@ export function MenuBar() {
       onPointerDown={(e) => { e.stopPropagation(); if (!(e.target as HTMLElement).closest("input")) e.preventDefault(); }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <div className="mb-left">
+      <div className="island mb-left">
         {menus.map((m) => (
           <div key={m.id} className="mb-menu">
             <button
@@ -159,7 +158,11 @@ export function MenuBar() {
           </div>
         ))}
       </div>
-      <div className="mb-right">
+      <CenterIsland />
+      <div className="island mb-right">
+        <button className={"mb-ico" + (os.panel === "overview" ? " on" : "")} onPointerDown={() => os.setPanel("overview")} title={t("All Windows", "Все окна")}>
+          <svg viewBox="0 0 24 24"><rect x="3" y="5" width="8" height="6" rx="1.5" /><rect x="13" y="5" width="8" height="6" rx="1.5" /><rect x="3" y="13" width="8" height="6" rx="1.5" /><rect x="13" y="13" width="8" height="6" rx="1.5" /></svg>
+        </button>
         <button className={"mb-ico" + (saved.lanController ? "" : " off")} onPointerDown={() => os.setPanel("control")} title={saved.lanController ? "Ethernet" : t("No network", "Нет сети")}>
           <svg viewBox="0 0 24 24"><path d="M12 4v5M7 13V9h10v4M4 20v-4h6v4zM14 20v-4h6v4z" />{!saved.lanController && <path d="M3 3l18 18" />}</svg>
         </button>
@@ -178,9 +181,87 @@ export function MenuBar() {
         <button className={"mb-ico" + (os.panel === "control" ? " on" : "")} onPointerDown={() => os.setPanel("control")} title={t("Control Center", "Пункт управления")}>
           <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="6" rx="3" /><circle cx="15" cy="8" r="1.6" className="fill" /><rect x="3" y="13" width="18" height="6" rx="3" /><circle cx="9" cy="16" r="1.6" className="fill" /></svg>
         </button>
-        <button className="mb-clock" onPointerDown={() => os.open("calendar")}>{clock}</button>
       </div>
       <ControlCenter />
+      <NotificationCenter />
+    </div>
+  );
+}
+
+/**
+ * Центральный островок (как «динамический остров» из os-design.md): время и дата;
+ * плавно расширяется, когда идёт таймер или пришло уведомление. Щелчок — центр уведомлений.
+ */
+function CenterIsland() {
+  const os = useOs();
+  const { lang, t } = useLang();
+  const now = useNow();
+  const clock = useClockState();
+  const locale = lang === "ru" ? "ru-RU" : "en-GB";
+  const banner = os.notices.find((n) => n.id === os.banner);
+  const left = timerLeft(clock);
+  const timing = clock.end !== null;
+  const width = banner ? 560 : timing ? 330 : 250;
+  return (
+    <button
+      className={"island mb-center" + (banner ? " expanded" : "") + (os.panel === "notifications" ? " on" : "")}
+      style={{ width }}
+      onPointerDown={() => (banner ? (useOs.setState({ banner: null }), os.open(banner.app)) : os.setPanel("notifications"))}
+    >
+      {banner ? (
+        <span key={banner.id} className="isl-banner">
+          <AppIcon name={APP_META[banner.app]?.icon ?? "pc"} size={26} />
+          <b>{banner.title}</b>
+          <span>{banner.body}</span>
+        </span>
+      ) : (
+        <span key="clock" className="isl-clock">
+          <span className="isl-date">{now.toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" })}</span>
+          <b>{now.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}</b>
+          {timing && left !== null && (
+            <span className="isl-timer" title={t("Timer", "Таймер")}>
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 2M9 2h6" /></svg>
+              {fmtTimer(left)}
+            </span>
+          )}
+        </span>
+      )}
+    </button>
+  );
+}
+
+/** Центр уведомлений: история уведомлений и календарь на сегодня. */
+function NotificationCenter() {
+  const os = useOs();
+  const { lang, t } = useLang();
+  const { mounted, closing } = usePresence(os.panel === "notifications", 220);
+  const now = useNow();
+  if (!mounted) return null;
+  const locale = lang === "ru" ? "ru-RU" : "en-GB";
+  const ago = (ms: number) => {
+    const m = Math.floor((Date.now() - ms) / 60000);
+    return m < 1 ? t("now", "сейчас") : m < 60 ? t(`${m} min ago`, `${m} мин назад`) : new Date(ms).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+  };
+  return (
+    <div className={"ncenter" + (closing ? " closing" : "")} onPointerDown={(e) => e.stopPropagation()}>
+      <div className="nc-today">
+        <div className="nc-day">{now.toLocaleDateString(locale, { weekday: "long" })}</div>
+        <div className="nc-date">{now.toLocaleDateString(locale, { day: "numeric", month: "long" })}</div>
+      </div>
+      <div className="nc-head">
+        <span>{t("Notifications", "Уведомления")}</span>
+        {os.notices.length > 0 && <button onClick={() => useOs.setState({ notices: [] })}>{t("Clear", "Очистить")}</button>}
+      </div>
+      <div className="nc-list">
+        {os.notices.map((n) => (
+          <button key={n.id} className="nc-item" onClick={() => { os.dismiss(); os.open(n.app); }}>
+            <AppIcon name={APP_META[n.app]?.icon ?? "pc"} size={34} />
+            <span className="nc-text"><b>{n.title}</b><span>{n.body}</span></span>
+            <span className="nc-time">{ago(n.time)}</span>
+          </button>
+        ))}
+        {!os.notices.length && <div className="nc-empty">{t("No notifications", "Нет уведомлений")}</div>}
+      </div>
     </div>
   );
 }

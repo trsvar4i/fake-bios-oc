@@ -39,6 +39,32 @@ export function ctxAt(e: React.MouseEvent, items: MenuItem[]) {
   useOs.getState().openCtx({ x: (e.clientX - left) / k, y: (e.clientY - top) / k, items });
 }
 
+const DRAG = "text/kestrel-path";
+
+/**
+ * Цель для перетаскивания файлов: папка, боковая панель, рабочий стол, Корзина.
+ * Возвращает обработчики и флаг подсветки.
+ */
+export function useDrop(dir: string | null) {
+  const [over, setOver] = useState(false);
+  const ok = (e: React.DragEvent) => !!dir && e.dataTransfer.types.includes(DRAG);
+  return {
+    over,
+    props: {
+      onDragOver: (e: React.DragEvent) => { if (!ok(e)) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = "move"; setOver(true); },
+      onDragLeave: () => setOver(false),
+      onDrop: (e: React.DragEvent) => {
+        setOver(false);
+        if (!ok(e)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const src = e.dataTransfer.getData(DRAG);
+        if (src && dir) useFs.getState().move(src, dir);
+      },
+    },
+  };
+}
+
 const DRIVES = [
   { name: "Kestrel NV2 1TB (NVMe)", total: 931, used: 412 },
   { name: "DataVault HDD 2TB", total: 1863, used: 1204 },
@@ -94,6 +120,8 @@ export function Finder({ winId }: { winId: number }) {
   const exists = isDisk || fs.isDir(path);
   const items = exists && !isDisk ? fs.list(path).filter((n) => n.toLowerCase().includes(q.toLowerCase())) : [];
 
+  const gridDrop = useDrop(exists && !isDisk ? path : null);
+
   const newFolder = () => {
     const name = fs.freeName(path, t("untitled folder", "новая папка"));
     if (fs.mkdir(join(path, name))) { setSel(join(path, name)); setRenaming(join(path, name)); }
@@ -121,14 +149,10 @@ export function Finder({ winId }: { winId: number }) {
     >
       <aside className="fd-side">
         <div className="fd-group">{t("Favorites", "Избранное")}</div>
-        {side.map(([p, name, ic]) => (
-          <button key={p} className={"fd-link" + (path === p ? " on" : "")} onClick={() => go(p)}>
-            <SideIcon kind={ic} />{name}
-          </button>
-        ))}
+        {side.map(([p, name, ic]) => <SideLink key={p} dir={p} on={path === p} onClick={() => go(p)}><SideIcon kind={ic} />{name}</SideLink>)}
         <div className="fd-group">{t("Locations", "Места")}</div>
         <button className={"fd-link" + (isDisk ? " on" : "")} onClick={() => go("disk")}><SideIcon kind="disk" />Kestrel HD</button>
-        <button className={"fd-link" + (path === TRASH ? " on" : "")} onClick={() => go(TRASH)}><SideIcon kind="trash" />{t("Trash", "Корзина")}</button>
+        <SideLink dir={TRASH} on={path === TRASH} onClick={() => go(TRASH)}><SideIcon kind="trash" />{t("Trash", "Корзина")}</SideLink>
       </aside>
 
       <section className="fd-main">
@@ -167,7 +191,8 @@ export function Finder({ winId }: { winId: number }) {
           <div className="fd-empty">{t("This folder no longer exists.", "Этой папки больше нет.")}</div>
         ) : (
           <div
-            className="fd-grid"
+            className={"fd-grid" + (gridDrop.over ? " drop" : "")}
+            {...gridDrop.props}
             onPointerDown={(e) => { if (e.target === e.currentTarget) setSel(null); }}
             onContextMenu={(e) => ctxAt(e, path === TRASH
               ? [{ label: t("Empty Trash", "Очистить Корзину"), run: () => fs.emptyTrash(), disabled: !items.length }]
@@ -204,11 +229,15 @@ export function FileItem({ path, selected, renaming, onSelect, onOpen, onRenamed
 }) {
   const fs = useFs();
   const [name, setName] = useState(nameOf(path));
+  const drop = useDrop(fs.isDir(path) && !isTrashed(path) ? path : null);
   useEffect(() => { if (renaming) setName(nameOf(path)); }, [renaming, path]);
   const commit = () => onRenamed(name.trim() ? fs.rename(path, name) : null);
   return (
     <div
-      className={"fd-item " + className + (selected ? " sel" : "")}
+      className={"fd-item " + className + (selected ? " sel" : "") + (drop.over ? " drop" : "")}
+      draggable={!renaming}
+      onDragStart={(e) => { e.dataTransfer.setData(DRAG, path); e.dataTransfer.effectAllowed = "move"; }}
+      {...drop.props}
       onPointerDown={(e) => { e.stopPropagation(); onSelect(); }}
       onDoubleClick={onOpen}
       onContextMenu={onMenu}
@@ -229,6 +258,11 @@ export function FileItem({ path, selected, renaming, onSelect, onOpen, onRenamed
       )}
     </div>
   );
+}
+
+function SideLink({ dir, on, onClick, children }: { dir: string; on: boolean; onClick: () => void; children: React.ReactNode }) {
+  const drop = useDrop(dir);
+  return <button className={"fd-link" + (on ? " on" : "") + (drop.over ? " drop" : "")} onClick={onClick} {...drop.props}>{children}</button>;
 }
 
 function SideIcon({ kind }: { kind: string }) {

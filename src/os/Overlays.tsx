@@ -9,6 +9,7 @@ import { WALLPAPERS } from "./wallpapers";
 import { usePresence } from "./util";
 import { HOME, nameOf, parentOf, useFs } from "./fs";
 import { openPath } from "./apps/Finder";
+import { switcherCommit } from "./commands";
 import { OsLogo } from "./AppIcon";
 
 export function Launchpad() {
@@ -165,6 +166,8 @@ export function ShortcutsPanel() {
   const rows: [string, string][] = [
     ["⌃ Space", "Spotlight"],
     ["⌥ L", "Launchpad"],
+    ["⌥ `", t("Switch apps (hold Alt)", "Переключить программу (держать Alt)")],
+    ["⌥ ↑", t("All windows", "Все окна")],
     ["⌥ N", t("New window", "Новое окно")],
     ["⇧ ⌥ N", t("New folder", "Новая папка")],
     ["⌥ W", t("Close window", "Закрыть окно")],
@@ -184,6 +187,37 @@ export function ShortcutsPanel() {
         <table className="keys-table"><tbody>{rows.map(([k, v]) => <tr key={k}><td><kbd>{k}</kbd></td><td>{v}</td></tr>)}</tbody></table>
         <button className="set-btn primary" onClick={() => os.dismiss()}>OK</button>
       </div>
+    </div>
+  );
+}
+
+/** Фон режима «Все окна»: затемнение и подсказка; щелчок по пустому месту — выход. */
+export function OverviewBackdrop() {
+  const os = useOs();
+  const { t } = useLang();
+  const { mounted, closing } = usePresence(os.panel === "overview", 420);
+  if (!mounted) return null;
+  const none = !os.windows.some((w) => !w.min && w.phase !== "closing");
+  return (
+    <div className={"ov-backdrop" + (closing ? " closing" : "")} onPointerDown={(e) => { e.stopPropagation(); os.dismiss(); }}>
+      <div className="ov-hint">{none ? t("No open windows", "Открытых окон нет") : t("Click a window to bring it forward", "Щёлкните окно, чтобы перейти к нему")}</div>
+    </div>
+  );
+}
+
+/** Переключатель приложений: ⌥` по кругу, отпустить Alt — перейти. */
+export function AppSwitcher() {
+  const sw = useOs((s) => s.switcher);
+  const { lang } = useLang();
+  if (!sw) return null;
+  return (
+    <div className="switcher" onPointerDown={(e) => e.stopPropagation()}>
+      {sw.apps.map((app, i) => (
+        <button key={app} className={"sw-app" + (i === sw.i ? " on" : "")} onPointerEnter={() => useOs.setState({ switcher: { ...sw, i } })} onClick={() => switcherCommit(app)}>
+          <AppIcon name={APP_META[app].icon} size={110} />
+          {i === sw.i && <span>{APP_META[app].title[lang]}</span>}
+        </button>
+      ))}
     </div>
   );
 }

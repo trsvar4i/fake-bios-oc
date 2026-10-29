@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { create } from "zustand";
 import { useLang } from "../../machine/store";
 import { playOs } from "../power";
+import { useOs } from "../osStore";
 import { useNow } from "../util";
 
 const CITIES: [string, string, string][] = [
@@ -72,26 +74,65 @@ function World() {
   );
 }
 
-function Stopwatch() {
+/**
+ * Секундомер и таймер живут вне окна: идут, даже если закрыть «Часы».
+ * Таймер по окончании присылает уведомление (см. useTimerService).
+ */
+interface ClockState {
+  swStart: number | null;
+  swBase: number;
+  laps: number[];
+  /** длительность таймера, с */
+  total: number;
+  /** когда таймер закончится (идёт) */
+  end: number | null;
+  /** сколько осталось, мс: на паузе или 0 по окончании; null — таймер не запущен */
+  left: number | null;
+}
+export const useClockState = create<ClockState>(() => ({ swStart: null, swBase: 0, laps: [], total: 5 * 60, end: null, left: null }));
+const setClock = useClockState.setState;
+
+/** Остаток таймера сейчас, мс (null — не запущен). */
+export const timerLeft = (c: ClockState) => (c.end !== null ? Math.max(0, c.end - Date.now()) : c.left);
+
+/** Следит за таймером во всей системе: по окончании — звук и уведомление. */
+export function useTimerService() {
+  const end = useClockState((c) => c.end);
   const { t } = useLang();
-  const [start, setStart] = useState<number | null>(null);
-  const [base, setBase] = useState(0);
-  const [laps, setLaps] = useState<number[]>([]);
+  useEffect(() => {
+    if (end === null) return;
+    const id = window.setTimeout(() => {
+      setClock({ end: null, left: 0 });
+      playOs("notify");
+      useOs.getState().notify("clock", t("Timer", "Таймер"), t("Time is up", "Время вышло"));
+    }, Math.max(0, end - Date.now()));
+    return () => clearTimeout(id);
+  }, [end]);
+}
+
+/** Перерисовка с частотой `ms`, пока `on`. */
+function useTicker(on: boolean, ms: number) {
   const [, tick] = useState(0);
   useEffect(() => {
-    if (start === null) return;
-    const id = window.setInterval(() => tick((n) => n + 1), 31);
+    if (!on) return;
+    const id = window.setInterval(() => tick((n) => n + 1), ms);
     return () => clearInterval(id);
-  }, [start]);
+  }, [on, ms]);
+}
+
+function Stopwatch() {
+  const { t } = useLang();
+  const { swStart: start, swBase: base, laps } = useClockState();
+  useTicker(start !== null, 31);
   const elapsed = base + (start !== null ? Date.now() - start : 0);
   return (
     <div className="cl-stop page">
       <div className="cl-big">{fmt(elapsed)}</div>
       <div className="cl-btns">
-        <button className="cl-round" disabled={start === null && !elapsed} onClick={() => (start !== null ? setLaps([elapsed, ...laps]) : (setBase(0), setLaps([])))}>
+        <button className="cl-round" disabled={start === null && !elapsed} onClick={() => (start !== null ? setClock({ laps: [elapsed, ...laps] }) : setClock({ swBase: 0, laps: [] }))}>
           {start !== null || !elapsed ? t("Lap", "Круг") : t("Reset", "Сброс")}
         </button>
-        <button className={"cl-round " + (start !== null ? "stop" : "go")} onClick={() => (start !== null ? (setBase(elapsed), setStart(null)) : setStart(Date.now()))}>
+        <button className={"cl-round " + (start !== null ? "stop" : "go")} onClick={() => (start !== null ? setClock({ swBase: elapsed, swStart: null }) : setClock({ swStart: Date.now() }))}>
           {start !== null ? t("Stop", "Стоп") : t("Start", "Старт")}
         </button>
       </div>
@@ -102,31 +143,25 @@ function Stopwatch() {
   );
 }
 
+export const fmtTimer = (ms: number) => {
+  const sec = Math.ceil(ms / 1000);
+  return `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
+};
+
 function Timer() {
   const { t } = useLang();
-  const [total, setTotal] = useState(5 * 60);
-  const [left, setLeft] = useState<number | null>(null);
-  const [running, setRunning] = useState(false);
-  const end = useRef(0);
-  useEffect(() => {
-    if (!running) return;
-    const id = window.setInterval(() => {
-      const ms = Math.max(0, end.current - Date.now());
-      setLeft(ms);
-      if (ms === 0) { setRunning(false); playOs("notify"); }
-    }, 100);
-    return () => clearInterval(id);
-  }, [running]);
-  const shown = left ?? total * 1000;
-  const sec = Math.ceil(shown / 1000);
-  const label = `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
-  const progress = left === null ? 1 : shown / (total * 1000);
+  const c = useClockState();
+  const running = c.end !== null;
+  useTicker(running, 100);
+  const left = timerLeft(c);
+  const shown = left ?? c.total * 1000;
+  const progress = left === null ? 1 : shown / (c.total * 1000);
   return (
     <div className="cl-timer page">
       {left === null ? (
         <div className="cl-presets">
           {[1, 3, 5, 10, 15, 30].map((m) => (
-            <button key={m} className={"cl-preset" + (total === m * 60 ? " on" : "")} onClick={() => setTotal(m * 60)}>{m} {t("min", "мин")}</button>
+            <button key={m} className={"cl-preset" + (c.total === m * 60 ? " on" : "")} onClick={() => setClock({ total: m * 60 })}>{m} {t("min", "мин")}</button>
           ))}
         </div>
       ) : (
@@ -135,18 +170,13 @@ function Timer() {
           <circle cx="60" cy="60" r="54" className="cl-ring-arc" style={{ strokeDashoffset: 339.3 * (1 - progress) }} />
         </svg>
       )}
-      <div className={"cl-big" + (left === 0 ? " done" : "")}>{left === 0 ? t("Done", "Готово") : label}</div>
+      <div className={"cl-big" + (left === 0 ? " done" : "")}>{left === 0 ? t("Done", "Готово") : fmtTimer(shown)}</div>
       <div className="cl-btns">
-        <button className="cl-round" disabled={left === null} onClick={() => { setRunning(false); setLeft(null); }}>{t("Cancel", "Отмена")}</button>
+        <button className="cl-round" disabled={left === null} onClick={() => setClock({ end: null, left: null })}>{t("Cancel", "Отмена")}</button>
         <button
           className={"cl-round " + (running ? "pause" : "go")}
           disabled={left === 0}
-          onClick={() => {
-            if (running) { setRunning(false); return; }
-            end.current = Date.now() + (left ?? total * 1000);
-            if (left === null) setLeft(total * 1000);
-            setRunning(true);
-          }}
+          onClick={() => (running ? setClock({ end: null, left }) : setClock({ end: Date.now() + (left ?? c.total * 1000), left: null }))}
         >
           {running ? t("Pause", "Пауза") : left === null ? t("Start", "Старт") : t("Resume", "Продолжить")}
         </button>

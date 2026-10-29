@@ -1,8 +1,8 @@
 // Иконки Kestrel OS: цветная плитка со своим символом.
 const ICONS: Record<string, { bg: string; path: string }> = {
   pc: { bg: "linear-gradient(135deg,#4aa3ff,#1f5fd6)", path: '<rect x="6" y="7" width="20" height="13" rx="1.5"/><path d="M12 25h8M16 20v5"/>' },
-  term: { bg: "linear-gradient(135deg,#3a3f4b,#16181d)", path: '<path d="M8 11l5 5-5 5M15 22h9"/>' },
-  notes: { bg: "linear-gradient(135deg,#ffd75e,#f0a500)", path: '<rect x="8" y="6" width="16" height="20" rx="1.5"/><path d="M12 12h8M12 16h8M12 20h5"/>' },
+  term: { bg: "linear-gradient(160deg,#3a3f4b,#111216)", path: '<path d="M8 11l5 5-5 5M15 22h9" stroke="#e8ecf4" style="filter:drop-shadow(0 0 2px rgba(120,255,170,.6))"/>' },
+  notes: { bg: "linear-gradient(180deg,#fff7d6 0%,#fff 38%,#f4f1e6 100%)", path: '<rect x="3" y="3" width="26" height="8" fill="#ffcc33" stroke="none"/><g stroke="#d9d3bf" stroke-width="1.2"><path d="M7 16h18M7 20.5h18M7 25h12"/></g>' },
   taskmgr: { bg: "linear-gradient(135deg,#4fd18b,#13894b)", path: '<path d="M5 18h5l3-7 4 12 3-8 2 3h5"/>' },
   vm: { bg: "linear-gradient(135deg,#a77bff,#5b2fd1)", path: '<rect x="5" y="8" width="16" height="12" rx="1.5"/><rect x="11" y="13" width="16" height="12" rx="1.5"/>' },
   launchpad: { bg: "linear-gradient(135deg,#f5f6fa,#c9ccd6)", path: '<g fill="#5b6275" stroke="none"><rect x="7" y="7" width="5" height="5" rx="1.4"/><rect x="13.5" y="7" width="5" height="5" rx="1.4" fill="#ff6b5b"/><rect x="20" y="7" width="5" height="5" rx="1.4" fill="#ffb340"/><rect x="7" y="13.5" width="5" height="5" rx="1.4" fill="#3fc76d"/><rect x="13.5" y="13.5" width="5" height="5" rx="1.4" fill="#2f8cff"/><rect x="20" y="13.5" width="5" height="5" rx="1.4" fill="#a066ff"/><rect x="7" y="20" width="5" height="5" rx="1.4" fill="#ff5f9e"/><rect x="13.5" y="20" width="5" height="5" rx="1.4" fill="#2fc7c7"/><rect x="20" y="20" width="5" height="5" rx="1.4"/></g>' },
@@ -16,7 +16,7 @@ const ICONS: Record<string, { bg: string; path: string }> = {
   trashFull: { bg: "linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,.12))", path: '<path d="M9 9h14l-1.4 16a2 2 0 0 1-2 1.8h-7.2a2 2 0 0 1-2-1.8z" fill="rgba(255,255,255,.25)"/><path d="M11 9l3-4 3 3 4-3 1 4" fill="#e9ebf0" stroke="#b8bcc6" stroke-width="1"/><path d="M7.5 9h17M13.5 13v10M18.5 13v10" stroke-width="1.5"/>' },
   folder: { bg: "transparent", path: '<path d="M3 9a2 2 0 0 1 2-2h7l2.5 2.5H27a2 2 0 0 1 2 2V25a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="#4ab0ff" stroke="none"/><path d="M3 12.5h26V25a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="#6cc4ff" stroke="none"/>' },
   file: { bg: "transparent", path: '<path d="M7 3h12l7 7v17a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="#fff" stroke="#c9ccd6" stroke-width="1"/><path d="M19 3v7h7" fill="#e4e6ec" stroke="#c9ccd6" stroke-width="1"/><g stroke="#a0a5b2" stroke-width="1.2"><path d="M9 15h13M9 18.5h13M9 22h9"/></g>' },
-  settings: { bg: "linear-gradient(135deg,#9aa3b5,#4b5263)", path: '<circle cx="16" cy="16" r="4"/><path d="M16 5v4M16 23v4M5 16h4M23 16h4M8.2 8.2l2.8 2.8M21 21l2.8 2.8M8.2 23.8l2.8-2.8M21 11l2.8-2.8"/>' },
+  settings: { bg: "linear-gradient(160deg,#b4bccb,#5d6577)", path: '<path d="M25.80,12.24 L26.50,15.72 L24.20,16.22 L23.66,18.94 L25.59,20.27 L23.62,23.23 L21.64,21.95 L19.34,23.49 L19.76,25.80 L16.28,26.50 L15.78,24.20 L13.06,23.66 L11.73,25.59 L8.77,23.62 L10.05,21.64 L8.51,19.34 L6.20,19.76 L5.50,16.28 L7.80,15.78 L8.34,13.06 L6.41,11.73 L8.38,8.77 L10.36,10.05 L12.66,8.51 L12.24,6.20 L15.72,5.50 L16.22,7.80 L18.94,8.34 L20.27,6.41 L23.23,8.38 L21.95,10.36 L23.49,12.66Z" fill="rgba(255,255,255,.92)" stroke="none"/><circle cx="16" cy="16" r="4.2" fill="#6b7385" stroke="none"/><circle cx="16" cy="16" r="2" fill="rgba(255,255,255,.92)" stroke="none"/>' },
 };
 
 /** Календарь показывает сегодняшнее число, как настоящий. */

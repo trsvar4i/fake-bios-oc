@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from "react";
 
 type Op = "+" | "−" | "×" | "÷";
 
-const apply = (a: number, b: number, op: Op) =>
+export const apply = (a: number, b: number, op: Op) =>
   op === "+" ? a + b : op === "−" ? a - b : op === "×" ? a * b : b === 0 ? NaN : a / b;
 
 /** Число для экрана: без хвостов плавающей точки, длинные — в экспоненте. */
-function show(v: number) {
+export function show(v: number) {
   if (!Number.isFinite(v)) return "Error";
   const r = Math.abs(Math.round(v * 1e10) / 1e10);
   const s = String(r).length > 10 ? r.toExponential(5) : String(r);

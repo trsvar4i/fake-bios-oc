@@ -10,8 +10,9 @@ import { DEFAULT_DOCK } from "../osStore";
 
 export function Settings() {
   const { t } = useLang();
-  const [page, setPage] = useState("personal");
+  const [page, setPage] = useState("appearance");
   const pages: [string, string][] = [
+    ["appearance", t("Appearance", "Оформление")],
     ["personal", t("Wallpaper", "Обои")],
     ["dock", t("Desktop & Dock", "Рабочий стол и Dock")],
     ["account", t("Account", "Учётная запись")],
@@ -27,6 +28,7 @@ export function Settings() {
         ))}
       </nav>
       <div className="set-page" key={page}>
+        {page === "appearance" && <Appearance />}
         {page === "personal" && <Personal />}
         {page === "dock" && <DockPage />}
         {page === "account" && <Account />}
@@ -53,6 +55,26 @@ function Personal() {
           </button>
         ))}
       </div>
+    </>
+  );
+}
+
+function Appearance() {
+  const { t } = useLang();
+  const theme = useOs((s) => s.prefs.theme);
+  const opts: ["light" | "dark" | "auto", string][] = [["light", t("Light", "Светлое")], ["dark", t("Dark", "Тёмное")], ["auto", t("Auto", "Авто")]];
+  return (
+    <>
+      <h2>{t("Appearance", "Оформление")}</h2>
+      <div className="theme-pick">
+        {opts.map(([id, name]) => (
+          <button key={id} className={"theme-opt " + id + (theme === id ? " on" : "")} onClick={() => useOs.getState().setPref("theme", id)}>
+            <span className="theme-prev"><i /><b /></span>
+            {name}
+          </button>
+        ))}
+      </div>
+      <p className="set-note">{t("Auto is light from 7:00 to 19:00 and dark in the evening.", "«Авто» — светлое с 7:00 до 19:00, вечером тёмное.")}</p>
     </>
   );
 }

@@ -5,15 +5,23 @@ import { AppIcon } from "./AppIcon";
 import { Window } from "./Window";
 import { MenuBar } from "./MenuBar";
 import { Dock } from "./Dock";
-import { AboutPanel, Launchpad, ShortcutsPanel, Spotlight } from "./Overlays";
+import { AboutPanel, AppSwitcher, Launchpad, OverviewBackdrop, ShortcutsPanel, Spotlight } from "./Overlays";
 import { ContextMenuLayer } from "./Menus";
 import { DesktopWidgets, WidgetGallery } from "./Widgets";
 import { Wallpaper } from "./Wallpaper";
 import { HOME, join, useFs } from "./fs";
-import { FileItem, ctxAt, itemMenu, openPath } from "./apps/Finder";
-import { cmd, handleShortcut } from "./commands";
+import { FileItem, ctxAt, itemMenu, openPath, useDrop } from "./apps/Finder";
+import { cmd, handleShortcut, switcherCommit } from "./commands";
+import { useTimerService } from "./apps/Clock";
 
 const DESK = `${HOME}/Desktop`;
+
+/** «Авто»: светлое днём (7:00–19:00), тёмное вечером и ночью. */
+const isLight = (theme: "dark" | "light" | "auto") => {
+  if (theme !== "auto") return theme === "light";
+  const h = new Date().getHours();
+  return h >= 7 && h < 19;
+};
 
 /**
  * Рабочий стол в духе macOS: строка меню, окна, док, виджеты, значок диска и файлы рабочего стола справа.
@@ -27,6 +35,7 @@ export function Desktop() {
   const [renaming, setRenaming] = useState<string | null>(null);
   const top = topWindow(os.windows);
   const files = fs.list(DESK);
+  const deskDrop = useDrop(DESK);
   // выделенный файл для обработчика клавиатуры, подписанного один раз
   const selRef = useRef<string | null>(null);
   selRef.current = sel === "disk" ? null : sel;
@@ -34,20 +43,24 @@ export function Desktop() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (handleShortcut(e)) { e.preventDefault(); return; }
-      if (e.key === "Escape") { os.dismiss(); return; }
+      if (e.key === "Escape") { os.dismiss(); useOs.setState({ switcher: null }); return; }
       // файлы на рабочем столе: Enter — переименовать, Delete — в Корзину
       const s = selRef.current;
       if (!s || useOs.getState().deskFocus === false || (e.target as HTMLElement).tagName === "INPUT") return;
       if (e.key === "Enter") setRenaming(s);
       if (e.key === "Delete") { useFs.getState().trash(s); setSel(null); }
     };
+    // переключатель приложений срабатывает, когда отпускают Alt
+    const onUp = (e: KeyboardEvent) => { if (e.key === "Alt") { e.preventDefault(); switcherCommit(); } };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keyup", onUp);
+    return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("keyup", onUp); };
   }, []);
+  useTimerService();
 
   return (
     <div
-      className="desktop"
+      className={"desktop" + (os.panel === "overview" ? " overview" : "") + (isLight(os.prefs.theme) ? " light" : "")}
       onPointerDown={() => { os.dismiss(); setSel(null); useOs.setState({ deskFocus: true }); }}
       onContextMenu={(e) => {
         // системное меню браузера не показываем нигде, кроме текстовых полей
@@ -57,7 +70,8 @@ export function Desktop() {
     >
       <Wallpaper id={os.prefs.wallpaper} />
       <div
-        className="desk-surface"
+        className={"desk-surface" + (deskDrop.over ? " drop" : "")}
+        {...deskDrop.props}
         onContextMenu={(e) => ctxAt(e, [
           { label: t("New Folder", "Новая папка"), run: () => { const n = fs.freeName(DESK, t("untitled folder", "новая папка")); fs.mkdir(join(DESK, n)); setSel(join(DESK, n)); setRenaming(join(DESK, n)); } },
           { label: t("New Text Document", "Новый текстовый документ"), run: () => cmd.newTextFile(DESK) },
@@ -69,7 +83,7 @@ export function Desktop() {
 
       <DesktopWidgets />
 
-      <div className="desk-icons">
+      <div className="desk-icons" {...deskDrop.props}>
         <div
           className={"fd-item desk" + (sel === "disk" ? " sel" : "")}
           onPointerDown={(e) => { e.stopPropagation(); os.dismiss(); setSel("disk"); useOs.setState({ deskFocus: true }); }}
@@ -93,6 +107,7 @@ export function Desktop() {
         })}
       </div>
 
+      <OverviewBackdrop />
       {os.windows.filter((w) => !w.min).map((w) => (
         <Window key={w.id} win={w} active={top?.id === w.id && !os.deskFocus} />
       ))}
@@ -104,6 +119,7 @@ export function Desktop() {
       <Spotlight />
       <AboutPanel />
       <ShortcutsPanel />
+      <AppSwitcher />
       <ContextMenuLayer />
       <div className="brightness" style={{ opacity: 1 - os.brightness }} />
     </div>

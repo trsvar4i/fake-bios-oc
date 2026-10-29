@@ -7,6 +7,7 @@ import { APP_META } from "./apps/meta";
 import { AppIcon } from "./AppIcon";
 import { TRASH, isTrashed, useFs } from "./fs";
 import { stageScale } from "./util";
+import { useDrop } from "./apps/Finder";
 
 const BASE = 72;
 const MAX = 124;
@@ -30,11 +31,44 @@ function centers(slots: Slot[]) {
   });
 }
 
+/**
+ * Плавное увеличение: позиция курсора и сила эффекта догоняют цель покадрово (requestAnimationFrame),
+ * поэтому иконки растут и опадают мягко, без рывков от событий мыши.
+ */
+function useMagnify() {
+  const [frame, setFrame] = useState({ x: 960, strength: 0 });
+  const target = useRef({ x: 960, strength: 0 });
+  const cur = useRef({ x: 960, strength: 0 });
+  const raf = useRef(0);
+  const loop = () => {
+    const c = cur.current, t = target.current;
+    c.x += (t.x - c.x) * 0.28;
+    c.strength += (t.strength - c.strength) * 0.16;
+    const done = Math.abs(t.x - c.x) < 0.3 && Math.abs(t.strength - c.strength) < 0.002;
+    if (done) { c.x = t.x; c.strength = t.strength; }
+    setFrame({ ...c });
+    raf.current = done ? 0 : requestAnimationFrame(loop);
+  };
+  const kick = () => { if (!raf.current) raf.current = requestAnimationFrame(loop); };
+  useEffect(() => () => cancelAnimationFrame(raf.current), []);
+  return {
+    ...frame,
+    aim: (x: number) => {
+      // при входе в док курсор подхватывается сразу, без «наезда» от прошлой позиции
+      if (cur.current.strength < 0.05) cur.current.x = x;
+      target.current = { x, strength: 1 };
+      kick();
+    },
+    release: () => { target.current = { ...target.current, strength: 0 }; kick(); },
+  };
+}
+
 export function Dock() {
   const os = useOs();
   const { t, lang } = useLang();
   const trashFull = useFs((s) => Object.keys(s.nodes).some(isTrashed));
-  const [mx, setMx] = useState<number | null>(null);
+  const trashDrop = useDrop(TRASH);
+  const mag = useMagnify();
   const [bounce, setBounce] = useState<Record<string, number>>({});
   const prev = useRef<Record<string, number> | null>(null);
 
@@ -60,10 +94,10 @@ export function Dock() {
   }, [os.windows.length]);
 
   const size = (i: number) => {
-    if (mx === null || !os.prefs.dockMagnify) return BASE;
-    const d = Math.abs(mx - cx[i]);
+    if (!os.prefs.dockMagnify || mag.strength < 0.001) return BASE;
+    const d = Math.abs(mag.x - cx[i]);
     if (d > RANGE) return BASE;
-    return BASE + (MAX - BASE) * (Math.cos((d / RANGE) * Math.PI) + 1) / 2;
+    return BASE + (MAX - BASE) * mag.strength * (Math.cos((d / RANGE) * Math.PI) + 1) / 2;
   };
 
   const title = (app: string) => (app === "launchpad" ? "Launchpad" : APP_META[app].title[lang]);
@@ -118,16 +152,16 @@ export function Dock() {
   return (
     <div className="dock-wrap" onPointerDown={(e) => e.stopPropagation()}>
       <div
-        className={"dock" + (mx === null ? "" : " hover")}
-        onPointerMove={(e) => { const { k, left } = stageScale(); setMx((e.clientX - left) / k); }}
-        onPointerLeave={() => setMx(null)}
+        className="dock"
+        onPointerMove={(e) => { const { k, left } = stageScale(); mag.aim((e.clientX - left) / k); }}
+        onPointerLeave={() => mag.release()}
       >
         {slots.map((slot, i) => {
           if (slot.kind === "sep") return <div key={"sep" + i} className="dock-sep" />;
           const s = size(i);
           if (slot.kind === "trash") {
             return (
-              <div key="trash" data-app="trash" className="dock-item" style={{ width: s, height: s }}
+              <div key="trash" data-app="trash" className={"dock-item" + (trashDrop.over ? " drop" : "")} style={{ width: s, height: s }} {...trashDrop.props}
                 onClick={() => os.open("finder", TRASH)} onContextMenu={(e) => menuAt(e, trashMenu())}>
                 <span className="dock-label">{t("Trash", "Корзина")}</span>
                 <span className="dock-icon"><AppIcon name={trashFull ? "trashFull" : "trash"} size={s} /></span>

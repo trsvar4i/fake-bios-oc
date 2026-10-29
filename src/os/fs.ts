@@ -65,6 +65,8 @@ interface FsState {
   /** свободное имя в папке: "untitled folder", "untitled folder 2"… */
   freeName: (dir: string, base: string, ext?: string) => string;
   rename: (p: string, name: string) => string | null;
+  /** переместить в другую папку; занятое имя получает номер. Возвращает новый путь */
+  move: (p: string, dir: string) => string | null;
   /** переместить в корзину */
   trash: (p: string) => void;
   /** вернуть из корзины на прежнее место */
@@ -129,6 +131,15 @@ export const useFs = create<FsState>((set, get) => {
       if (to === p) return p;
       if (get().nodes[to]) return null;
       commit(moveTree(get().nodes, p, to));
+      return to;
+    },
+    move: (p, dir) => {
+      const { nodes } = get();
+      // нельзя переместить папку саму в себя или в свою же вложенную папку
+      if (!nodes[p] || !get().isDir(dir) || p === HOME || dir === p || dir.startsWith(p + "/") || parentOf(p) === dir) return null;
+      if (dir === TRASH || isTrashed(dir)) { get().trash(p); return null; }
+      const to = join(dir, get().freeName(dir, nameOf(p)));
+      commit(moveTree(nodes, p, to, { from: undefined }));
       return to;
     },
     trash: (p) => {

@@ -75,9 +75,43 @@ export const cmd = {
   selectAll: () => editable()?.select(),
 };
 
+/** Приложения в порядке последнего использования (верхнее окно — первое). */
+function recentApps() {
+  const seen: string[] = [];
+  [...useOs.getState().windows].filter((w) => w.phase !== "closing").sort((a, b) => b.z - a.z)
+    .forEach((w) => { if (!seen.includes(w.app)) seen.push(w.app); });
+  return seen;
+}
+
+/** ⌥` — следующее приложение (⇧ — предыдущее). Переключение — когда отпущен Alt. */
+export function switcherStep(back: boolean) {
+  const os = useOs.getState();
+  const sw = os.switcher;
+  if (!sw) {
+    const apps = recentApps();
+    if (!apps.length) return;
+    useOs.setState({ switcher: { apps, i: apps.length > 1 ? (back ? apps.length - 1 : 1) : 0 }, menu: null, ctx: null });
+    return;
+  }
+  const n = sw.apps.length;
+  useOs.setState({ switcher: { ...sw, i: (sw.i + (back ? n - 1 : 1)) % n } });
+}
+export function switcherCommit(app?: string) {
+  const os = useOs.getState();
+  const sw = os.switcher;
+  if (!sw) return;
+  useOs.setState({ switcher: null });
+  const target = app ?? sw.apps[sw.i];
+  const ws = os.windows.filter((w) => w.app === target && w.phase !== "closing").sort((a, b) => b.z - a.z);
+  const win = ws.find((w) => !w.min) ?? ws[0];
+  if (win) os.focus(win.id);
+}
+
 /** Горячие клавиши в стиле macOS. Возвращает true, если клавиша обработана. */
 export function handleShortcut(e: KeyboardEvent): boolean {
   if (e.ctrlKey && e.code === "Space") { useOs.getState().setPanel("spotlight"); return true; }
+  if (e.altKey && e.code === "Backquote") { switcherStep(e.shiftKey); return true; }
+  if (e.altKey && e.code === "ArrowUp") { useOs.getState().setPanel("overview"); return true; }
   if (!e.altKey || e.ctrlKey || e.metaKey) return false;
   const map: Record<string, () => void> = {
     KeyW: cmd.closeWindow, KeyQ: cmd.quitApp, KeyM: cmd.minimize, KeyH: e.shiftKey ? cmd.hideOthers : cmd.hideApp,

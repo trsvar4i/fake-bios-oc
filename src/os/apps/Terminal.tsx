@@ -169,8 +169,12 @@ export function Terminal({ winId }: { winId: number }) {
         const src = resolve(cwd, from);
         if (!fs.exists(src)) return err(`mv: rename ${from} to ${to}: No such file or directory`);
         const dest = resolve(cwd, to);
-        if (parentOf(dest) !== parentOf(src)) return err("mv: moving between folders is not supported yet — use Finder");
-        return fs.rename(src, nameOf(dest)) ? [] : err(`mv: ${to}: File exists`);
+        // в существующую папку — перенос; иначе — переименование (и перенос, если путь в другой папке)
+        if (fs.isDir(dest)) return fs.move(src, dest) ? [] : err(`mv: cannot move ${from} into ${to}`);
+        if (!fs.isDir(parentOf(dest))) return err(`mv: ${to}: No such file or directory`);
+        if (fs.exists(dest)) return err(`mv: ${to}: File exists`);
+        const moved = parentOf(dest) === parentOf(src) ? src : fs.move(src, parentOf(dest));
+        return moved && fs.rename(moved, nameOf(dest)) ? [] : err(`mv: cannot move ${from}`);
       }
       case "open": {
         const name = (args[0] === "-a" ? args.slice(1) : args).join(" ").toLowerCase();
@@ -254,7 +258,8 @@ export function Terminal({ winId }: { winId: number }) {
       const pw = useOs.getState().prefs.password;
       setSudo(null);
       if (pw && raw !== pw) return setLines((l) => [...l, { text: "Password:" }, ...err("sudo: incorrect password")]);
-      return setLines((l) => [...l, { text: "Password:" }, ...sudo.run()]);
+      const result = sudo.run();
+      return setLines((l) => [...l, { text: "Password:" }, ...result]);
     }
 
     const cmd = raw.trim();
@@ -270,7 +275,9 @@ export function Terminal({ winId }: { winId: number }) {
       setLines((l) => [...l, echo]);
       return setSudo(res);
     }
-    setLines((l) => [...l, echo, ...run(cmd)]);
+    // команда выполняется один раз, вне функции обновления состояния (React может вызвать её дважды)
+    const result = run(cmd);
+    setLines((l) => [...l, echo, ...result]);
   };
 
   /** Tab: дополнение команды или имени файла. */
