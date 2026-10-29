@@ -213,7 +213,8 @@ export function openFlash() {
     ),
     buttons: usb && !fresh
       ? [{ label: tr("Update", "Обновить"), run: confirmFlash }, { label: tr("Cancel", "Отмена"), run: () => {} }]
-      : [{ label: "OK", run: () => {} }],
+      : usb ? [{ label: "OK", run: () => {} }, { label: tr("Flash anyway", "Прошить заново"), run: confirmFlash }]
+        : [{ label: "OK", run: () => {} }],
   });
 }
 

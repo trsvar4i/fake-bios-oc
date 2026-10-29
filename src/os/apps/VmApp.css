@@ -34,7 +34,7 @@
 .vm-kboot span { animation: page-in .4s var(--ease) both; }
 .vm-desk { position: absolute; inset: 0; animation: os-fade-in .6s ease both; }
 .vm-desk .wallpaper-art { position: absolute; inset: 0; width: 100%; height: 100%; }
-.vm-win { position: absolute; left: 50%; top: 40%; width: 360px; transform: translate(-50%, -50%); border-radius: 12px; overflow: hidden; background: rgba(26, 26, 31, .92); color: #f3f4f7; box-shadow: 0 16px 40px rgba(0, 0, 0, .45); animation: win-open .4s var(--spring) both; }
+.vm-win { position: absolute; left: 50%; top: 22%; width: 360px; margin-left: -180px; border-radius: 12px; overflow: hidden; background: rgba(26, 26, 31, .92); color: #f3f4f7; box-shadow: 0 16px 40px rgba(0, 0, 0, .45); animation: win-open .4s var(--spring) both; }
 .vm-win-title { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px 8px 14px; font-size: 13px; font-weight: 700; border-bottom: 1px solid rgba(255, 255, 255, .08); }
 .vm-win-title button { width: 22px; height: 22px; border-radius: 7px; color: #a1a1aa; }
 .vm-win-title button:hover { background: #e5484d; color: #fff; }
