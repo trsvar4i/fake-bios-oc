@@ -4,6 +4,7 @@ import { bootScript } from "../../machine/boot";
 import { sound } from "../../machine/audio";
 import { useOs } from "../../os/osStore";
 import { unlock } from "../../machine/quests";
+import { guardedSetup } from "./Post";
 
 /** Текст POST, перебор устройств и итог загрузки. Успешная загрузка Kestrel OS передаёт управление ОС. */
 export function BootScreen() {
@@ -64,11 +65,11 @@ export function BootScreen() {
     const onKey = (e: KeyboardEvent) => {
       if (!done) return;
       if (final.type === "ocfail") {
-        if (e.key === "F1") { e.preventDefault(); useStore.getState().enterSetup(); }
+        if (e.key === "F1") { e.preventDefault(); guardedSetup(() => {}); }
         if (e.key === "F2") { e.preventDefault(); useStore.getState().clearCmos(); }
         return;
       }
-      if (e.key === "Delete") { e.preventDefault(); useStore.getState().enterSetup(); }
+      if (e.key === "Delete") { e.preventDefault(); guardedSetup(() => {}); }
       if (e.key.toLowerCase() === "r") restart();
     };
     window.addEventListener("keydown", onKey);
@@ -83,7 +84,7 @@ export function BootScreen() {
           <p>{final.hint[lang]}</p>
           <p>{lang === "ru" ? "Войдите в Setup и измените настройки разгона." : "Please enter Setup to re-configure your system."}</p>
           <div className="boot-actions">
-            <span onClick={() => useStore.getState().enterSetup()}>Press <b>F1</b> to Run SETUP</span>
+            <span onClick={() => guardedSetup(() => {})}>Press <b>F1</b> to Run SETUP</span>
             <span onClick={() => useStore.getState().clearCmos()}>Press <b>F2</b> to Load Default Values and Continue</span>
           </div>
         </div>
@@ -117,7 +118,7 @@ export function BootScreen() {
             <small>{final.hint[lang]}</small>
           </div>
           <div className="boot-actions">
-            <span onClick={() => useStore.getState().enterSetup()}>Press <b>DEL</b> to enter Setup</span>
+            <span onClick={() => guardedSetup(() => {})}>Press <b>DEL</b> to enter Setup</span>
             <span onClick={restart}>Press <b>R</b> to restart</span>
             <span onClick={shutdown}>Hold <b>Power</b> to shut down</span>
           </div>

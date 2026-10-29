@@ -1,7 +1,10 @@
 // Действия BIOS, которые открывают окна. Вызываются и из EZ, и из Advanced, и с клавиатуры.
 import { useStore, changedIds } from "../../machine/store";
 import { PARAMS, formatValue, isDisabled, normalizeNumber } from "../../machine/params";
-import { DEVICES, DEVICE_IDS, HW, type DeviceId } from "../../machine/hardware";
+import { DEVICES, DEVICE_IDS, FW_LATEST, HW, flashFirmware, type DeviceId } from "../../machine/hardware";
+import { cpuGhz, memOf } from "../../machine/sensors";
+import { OC_KEYS, loadProfiles, saveProfile, shareLink } from "../../machine/profiles";
+import { unlock } from "../../machine/quests";
 import { deviceAvailable } from "../../machine/boot";
 import type { Lang } from "../../machine/i18n";
 
@@ -17,6 +20,7 @@ export function editParam(id: string) {
   const s = st();
   const p = PARAMS[id];
   if (isDisabled(id, s.pending)) return;
+  if (p.type === "password") return editPassword(id);
   if (p.type === "number") {
     s.openDialog({
       title: p.label[lang()],
@@ -49,6 +53,33 @@ export function cycleParam(id: string, dir: number) {
     s.setParam(id, o[(o.indexOf(v) + dir + o.length) % o.length]);
   }
   if (p.type === "number") s.setParam(id, normalizeNumber(p, v + dir * p.step!, dir));
+}
+
+/** Пароль: новый, затем подтверждение. Пустой — снять пароль. */
+function editPassword(id: string) {
+  const s = st();
+  s.openDialog({
+    title: tr("Create New Password", "Новый пароль"),
+    password: {
+      hint: tr("Up to 20 characters. Leave empty to remove the password.", "До 20 символов. Пустое поле — снять пароль."),
+      onSubmit: (first) => {
+        if (!first) { st().setParam(id, ""); return true; }
+        st().openDialog({
+          title: tr("Confirm New Password", "Подтвердите пароль"),
+          password: {
+            hint: tr("Type the same password again", "Введите тот же пароль ещё раз"),
+            onSubmit: (again) => {
+              if (again !== first) return false;
+              st().setParam(id, first);
+              unlock("password");
+              return true;
+            },
+          },
+        });
+        return true;
+      },
+    },
+  });
 }
 
 export function pickBootSlot(index: number) {
@@ -151,7 +182,7 @@ export function confirmOverride(dev: DeviceId) {
 }
 
 export function openFavorites() {
-  const favs = ["xmp", "fanProfile", "cpuRatio", "virtualization", "secureBoot", "fastBoot", "sataMode"];
+  const favs = ["xmp", "fanProfile", "cpuRatio", "cpuVcore", "virtualization", "secureBoot", "csm", "fastBoot", "sataMode"];
   st().openDialog({
     title: tr("Favorites", "Избранное"),
     list: favs.map((id) => ({ label: `${PARAMS[id].label[lang()]}:  ${formatValue(id, st().pending[id], lang())}`, value: id })),
@@ -159,24 +190,105 @@ export function openFavorites() {
   });
 }
 
+/** Instant Flash: поиск образа на флешке, подтверждение, запись с прогрессом, перезагрузка. */
 export function openFlash() {
-  st().openDialog({
-    title: "Flash BIOS",
+  const s = st();
+  const usb = s.saved.usbStorage;
+  const fresh = HW.bios === FW_LATEST.bios;
+  const file = "fs0:\\KS7E26." + FW_LATEST.bios.split(".")[1];
+  s.openDialog({
+    title: "Kestrel Instant Flash",
     body: (
       <>
-        <p>{tr("Current version", "Текущая версия")}: <b>{HW.bios}</b> ({HW.buildDate})</p>
-        <p>{tr("Searching USB drives for BIOS image...", "Поиск файла прошивки на USB-накопителях...")}</p>
-        <p className="crit">{tr("No BIOS image found.", "Файл прошивки не найден.")}</p>
+        <table className="flash-info"><tbody>
+          <tr><td>{tr("Platform", "Платформа")}</td><td>{HW.product}</td></tr>
+          <tr><td>{tr("Current version", "Текущая версия")}</td><td>{HW.bios} ({HW.buildDate})</td></tr>
+          <tr><td>{tr("Drive", "Накопитель")}</td><td>{usb ? "USB Flash Drive 32GB (FAT32)" : tr("No USB storage found", "USB-накопитель не найден")}</td></tr>
+          {usb && <tr><td>{tr("Image", "Образ")}</td><td>{file} ({FW_LATEST.bios}, {FW_LATEST.buildDate})</td></tr>}
+        </tbody></table>
+        {!usb && <p className="crit">{tr("Enable USB Mass Storage Driver Support (Advanced → USB Configuration), save and try again.", "Включите поддержку USB-накопителей (Advanced → USB Configuration), сохраните и попробуйте снова.")}</p>}
+        {usb && fresh && <p className="ok">{tr("The installed BIOS is already the latest version.", "Установлена последняя версия BIOS.")}</p>}
+        {usb && !fresh && <p>{tr("A newer BIOS image was found. Update now?", "Найден более новый образ BIOS. Обновить?")}</p>}
+      </>
+    ),
+    buttons: usb && !fresh
+      ? [{ label: tr("Update", "Обновить"), run: confirmFlash }, { label: tr("Cancel", "Отмена"), run: () => {} }]
+      : [{ label: "OK", run: () => {} }],
+  });
+}
+
+function confirmFlash() {
+  st().openDialog({
+    title: "Kestrel Instant Flash",
+    body: <p className="warnline">{tr("Do not turn off the power or reset the system during the update.", "Не выключайте питание и не перезагружайте компьютер во время обновления.")}</p>,
+    buttons: yesNo(runFlash),
+  });
+}
+
+function runFlash() {
+  let pct = 0;
+  const step = () => {
+    pct = Math.min(100, pct + 1.2 + Math.random() * 2.4);
+    const stage = pct < 18 ? tr("Erasing", "Стирание") : pct < 82 ? tr("Writing", "Запись") : tr("Verifying", "Проверка");
+    if (pct < 100) {
+      st().openDialog({ title: `Kestrel Instant Flash — ${stage}`, progress: pct });
+      window.setTimeout(step, 90);
+      return;
+    }
+    flashFirmware(FW_LATEST);
+    st().openDialog({
+      title: "Kestrel Instant Flash",
+      body: <p className="ok">{tr(`Update complete: ${FW_LATEST.bios}. The system will now restart.`, `Обновление завершено: ${FW_LATEST.bios}. Система перезагрузится.`)}</p>,
+      buttons: [{ label: "OK", run: () => st().restart() }],
+    });
+  };
+  window.setTimeout(step, 0);
+}
+
+/** Ссылка на конфигурацию: в буфер обмена и на экран. */
+export function openShare() {
+  const link = shareLink(st().pending);
+  void navigator.clipboard?.writeText(link).catch(() => {});
+  unlock("share");
+  st().openDialog({
+    title: tr("Share Configuration", "Поделиться настройками"),
+    body: (
+      <>
+        <p>{tr("Link copied to the clipboard. Whoever opens it will be offered to apply your settings:", "Ссылка скопирована в буфер обмена. Тому, кто её откроет, предложат применить ваши настройки:")}</p>
+        <div className="share-link">{link}</div>
+        <p className="dlg-muted">{tr("Unsaved changes are included. The Setup password is never shared.", "Несохранённые изменения входят в ссылку. Пароль Setup не передаётся.")}</p>
       </>
     ),
     buttons: [{ label: "OK", run: () => {} }],
   });
 }
 
+/** Слот профиля разгона: сохранить текущие настройки или загрузить сохранённые (до F10). */
+export function openProfile(slot: number) {
+  const prof = loadProfiles()[slot];
+  const s = st();
+  const name = `${cpuGhz(s.pending).toFixed(2)} GHz · DDR5-${memOf(s.pending).freq}`;
+  const save = () => { saveProfile(slot, name, st().pending); unlock("profile"); };
+  const load = () => { for (const k of OC_KEYS) if (prof && k in prof.cfg) st().setParam(k, structuredClone(prof.cfg[k])); };
+  s.openDialog({
+    title: `OC Profile ${slot + 1}`,
+    body: prof
+      ? <p>{tr("Saved", "Сохранён")}: <b>{prof.name}</b> ({new Date(prof.date).toLocaleDateString("en-GB")})</p>
+      : <p className="dlg-muted">{tr("Empty slot.", "Пустой слот.")}</p>,
+    buttons: [
+      ...(prof ? [{ label: tr("Load", "Загрузить"), run: load }] : []),
+      { label: prof ? tr("Overwrite", "Перезаписать") : tr("Save current", "Сохранить текущие"), run: save },
+      { label: tr("Cancel", "Отмена"), run: () => {} },
+    ],
+  });
+}
+
 export const toggleMode = () => st().patch({ mode: st().mode === "ez" ? "adv" : "ez" });
 
-export type ActionId = "save" | "discardExit" | "discard" | "defaults" | "clearCmos";
+export type ActionId = "save" | "discardExit" | "discard" | "defaults" | "clearCmos" | "flash" | "share";
 export const ACTIONS: Record<ActionId, () => void> = {
+  flash: openFlash,
+  share: openShare,
   save: confirmSave,
   discardExit: confirmDiscardExit,
   discard: confirmDiscard,

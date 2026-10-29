@@ -6,7 +6,7 @@ import { readings, tempClass } from "../../machine/sensors";
 import { Icon } from "../ui/Icon";
 import { SoundToggle } from "../ui/SoundToggle";
 import { kf } from "./ezKeys";
-import { confirmDefaults, confirmExit, confirmSave, editParam, toggleMode } from "./actions";
+import { confirmDefaults, confirmExit, confirmSave, editParam, openFavorites, toggleMode } from "./actions";
 
 export function Header() {
   const s = useStore();
@@ -22,12 +22,21 @@ export function Header() {
   return (
     <>
       <header className="titlebar">
-        <div className="logo"><span className="logo-mark" />KESTREL <b>UEFI BIOS</b></div>
+        <div className="tb-left">
+          <div className="logo"><span className="logo-mark" />KESTREL <b>UEFI BIOS</b></div>
+          {s.mode === "adv" && (
+            <span className="tb-clock">
+              <b>{now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</b>
+              {now.toLocaleDateString(locale, { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" })}
+            </span>
+          )}
+        </div>
         <button className="mode-btn" onClick={toggleMode}>
           {s.mode === "ez" ? t("Advanced (F7)", "Расширенный (F7)") : "EZ Mode (F7)"}
         </button>
         <div className="tb-right">
           {changedIds(s).length > 0 && <span className="dirty">● {t("Unsaved changes", "Есть несохранённые изменения")}</span>}
+          <button className="tb-btn" onClick={openFavorites}>F3 {t("Favorites", "Избранное")}</button>
           <button className="tb-btn" onClick={confirmDefaults}>F6 {t("Defaults", "По умолчанию")}</button>
           <button className="tb-btn" onClick={confirmSave}>F10 {t("Save", "Сохранить")}</button>
           <SoundToggle />
@@ -36,7 +45,7 @@ export function Header() {
         </div>
       </header>
 
-      <section className="infobar">
+      {s.mode === "ez" && <section className="infobar">
         <div className="clockbox">
           <div className="clock">{now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</div>
           <div className="date">{now.toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</div>
@@ -64,7 +73,7 @@ export function Header() {
           </div>
           <BootBar />
         </div>
-      </section>
+      </section>}
     </>
   );
 }

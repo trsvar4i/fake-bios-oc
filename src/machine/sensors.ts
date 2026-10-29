@@ -14,7 +14,10 @@ export function dutyAt(curve: Curve, t: number): number {
   return curve[curve.length - 1][1];
 }
 
-const ratioOf = (c: Config) => c.cpuRatio || HW.baseRatio;
+/** Базовая частота, МГц (Auto — 100). */
+export const bclkOf = (c: Config) => (c.bclk ? c.bclk / 100 : HW.bclk);
+/** Множитель с учётом BCLK: 45 при 100 МГц = 4,5 ГГц; при 102 МГц — уже 45,9. */
+const ratioOf = (c: Config) => (c.cpuRatio || HW.baseRatio) * bclkOf(c) / HW.bclk;
 /** Частота ядра по настройкам BIOS, ГГц (без режима питания и троттлинга). */
 export const cpuGhz = (c: Config) => ratioOf(c) / 10;
 
@@ -24,17 +27,41 @@ export function requiredVcore(c: Config) {
   const uc = Math.max(0, HW.baseRatio - ratioOf(c));
   return 1.1 + oc * 0.03 - uc * 0.01;
 }
+/** Сколько напряжения добавляет LLC под нагрузкой: компенсирует просадку. */
+const LLC_BOOST: Record<string, number> = { "Auto": 0, "Level 1": 0.005, "Level 2": 0.01, "Level 3": 0.02, "Level 4": 0.03, "Level 5": 0.04 };
+export const llcBoost = (c: Config) => LLC_BOOST[c.llc] ?? 0;
 export const vcoreOf = (c: Config) => (c.cpuVcore ? c.cpuVcore / 1000 : requiredVcore(c));
 export const dramVOf = (c: Config) => (c.dramVoltage ? c.dramVoltage / 1000 : XMP[c.xmp].volt);
 
 const DRAM_MIN: Record<string, number> = { "Disabled": 1.05, "Profile 1": 1.2, "Profile 2": 1.33 };
+const XMP_CL: Record<string, number> = { "Disabled": 40, "Profile 1": 36, "Profile 2": 30 };
+
+/** Память по настройкам: частота с учётом BCLK, тайминги (Auto — из профиля XMP). */
+export function memOf(c: Config) {
+  const xmp = XMP[c.xmp];
+  const auto = xmp.timings.split("-").map(Number);
+  const base = c.dramFreq && c.dramFreq !== "Auto" ? Number(String(c.dramFreq).slice(5)) : xmp.freq;
+  const t = [c.tCL || auto[0], c.tRCD || auto[1], c.tRP || auto[2], c.tRAS || auto[3]];
+  const manual = (c.dramFreq && c.dramFreq !== "Auto") || !!(c.tCL || c.tRCD || c.tRP || c.tRAS);
+  return { freq: Math.round(base * bclkOf(c) / HW.bclk), timings: t.join("-"), cl: t[0], manual };
+}
+
+/** Напряжение DRAM, которого хватает частоте и таймингам. */
+export function requiredDramV(c: Config) {
+  const m = memOf(c);
+  if (!m.manual) return DRAM_MIN[c.xmp];
+  // «плотность»: частота на такт задержки; JEDEC 4800/40 = 120, XMP 6000/30 = 200
+  return 1.05 + Math.max(0, m.freq / m.cl - 120) * 0.0034 + Math.max(0, m.freq - 6400) * 0.0002;
+}
 
 /** Стабильность разгона. fail — POST не пройдёт, unstable — ОС упадёт. */
 export function stability(c: Config): { cpu: "ok" | "unstable" | "fail"; mem: "ok" | "fail" } {
-  const lack = requiredVcore(c) - vcoreOf(c);
+  const lack = requiredVcore(c) - vcoreOf(c) - llcBoost(c);
+  const m = memOf(c);
+  const memTooFast = m.freq > 7000 || bclkOf(c) > 104;
   return {
     cpu: lack > 0.06 ? "fail" : lack > 0.005 ? "unstable" : "ok",
-    mem: dramVOf(c) < DRAM_MIN[c.xmp] ? "fail" : "ok",
+    mem: memTooFast || dramVOf(c) < requiredDramV(c) - 1e-9 ? "fail" : "ok",
   };
 }
 
@@ -45,8 +72,14 @@ export interface Workload { load: number; power: Power }
 export const IDLE_WORKLOAD: Workload = { load: 0.35, power: "balanced" };
 
 const POWER_RATIO: Record<Power, number> = { quiet: -8, balanced: 0, performance: 2 };
-/** С какой температуры процессор начинает сбрасывать частоту, °C */
+/** С какой температуры процессор начинает сбрасывать частоту, °C (по умолчанию 92, задаётся в BIOS) */
 export const THROTTLE_AT = 92;
+export const throttleAt = (c: Config) => (c.thermalLimit && c.thermalLimit !== "Auto" ? parseInt(c.thermalLimit, 10) : THROTTLE_AT);
+/** Корпусные вентиляторы: насколько холоднее (−) или теплее (+) процессору и сколько шума. */
+const SYS_FAN: Record<string, { dt: number; rpm: number }> = {
+  "Silent": { dt: 1.5, rpm: 0.55 }, "Standard": { dt: 0, rpm: 0.75 }, "Turbo": { dt: -1.5, rpm: 1.05 }, "Full Speed": { dt: -3, rpm: 1.4 },
+};
+const sysFan = (c: Config) => SYS_FAN[c.sysFanProfile] ?? SYS_FAN.Standard;
 
 /** Тепловыделение без учёта охлаждения, °C */
 function heat(c: Config, w: Workload = IDLE_WORKLOAD): number {
@@ -56,7 +89,10 @@ function baseHeat(c: Config): number {
   const oc = Math.max(0, ratioOf(c) - HW.baseRatio);
   const uc = Math.max(0, HW.baseRatio - ratioOf(c));
   const extraV = vcoreOf(c) - requiredVcore(c); // перенапряжение греет, андервольт охлаждает
-  return 56 + oc * 6.5 - uc * 0.8 + extraV * 80 + XMP[c.xmp].heat + (c.cpb === "Auto" ? 2 : 0) + (c.smt ? 1 : 0);
+  const m = memOf(c);
+  const memHeat = m.manual ? Math.max(0, (m.freq - 4800) / 600) : XMP[c.xmp].heat;
+  return 56 + oc * 6.5 - uc * 0.8 + (extraV + llcBoost(c)) * 80 + memHeat + (c.cpb === "Auto" ? 2 : 0) + (c.smt ? 1 : 0)
+    + (c.pbo === "Enabled" ? 3 : 0) + sysFan(c).dt;
 }
 
 /** Температура, к которой стремится CPU при текущей скорости вентилятора. */
@@ -94,9 +130,11 @@ export function stepThermal(th: Thermal, c: Config, dt: number, w?: Workload): T
 
 export function readings(c: Config, th: Thermal, w: Workload = IDLE_WORKLOAD) {
   // режим питания меняет частоту, перегрев её сбрасывает (троттлинг)
-  const throttle = th.temp > THROTTLE_AT ? Math.min(12, Math.ceil((th.temp - THROTTLE_AT) * 1.5)) : 0;
-  const ratio = Math.max(20, ratioOf(c) + POWER_RATIO[w.power] - throttle);
-  const mem = XMP[c.xmp];
+  const limit = throttleAt(c);
+  const throttle = th.temp > limit ? Math.min(12, Math.ceil((th.temp - limit) * 1.5)) : 0;
+  const boost = c.pbo === "Enabled" && w.load > 0.5 ? 2 : 0;
+  const ratio = Math.max(20, ratioOf(c) + POWER_RATIO[w.power] + boost - throttle);
+  const mem = memOf(c);
   const temp = th.temp + th.jitter;
   const rpm = Math.round(th.rpm);
   return {
@@ -104,7 +142,9 @@ export function readings(c: Config, th: Thermal, w: Workload = IDLE_WORKLOAD) {
     throttled: throttle > 0,
     load: w.load,
     freq: (ratio / 10).toFixed(2),
-    vcore: vcoreOf(c),
+    vcore: vcoreOf(c) + llcBoost(c) - 0.012 * w.load,
+    bclk: bclkOf(c),
+    multiplier: c.cpuRatio || HW.baseRatio,
     dramV: dramVOf(c),
     dramFreq: mem.freq,
     timings: mem.timings,
@@ -112,8 +152,8 @@ export function readings(c: Config, th: Thermal, w: Workload = IDLE_WORKLOAD) {
     mbTemp: 30 + (th.temp - 40) * 0.25 + th.jitter * 0.3,
     duty: dutyAt(activeCurve(c), th.temp),
     rpm,
-    sysRpm: Math.round(rpm * 0.75),
-    noise: 15 + rpm * 0.014,
+    sysRpm: Math.round(1100 * sysFan(c).rpm + th.jitter * 6),
+    noise: 15 + rpm * 0.014 + (sysFan(c).rpm - 0.75) * 9,
     v12: 12.1 + th.jitter * 0.01,
     v5: 5.04 + th.jitter * 0.005,
     v33: 3.32 + th.jitter * 0.003,

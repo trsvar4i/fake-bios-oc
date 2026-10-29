@@ -1,7 +1,7 @@
 import { l, type L } from "./i18n";
-import { DEVICES, HW, STORAGE, XMP, type DeviceId } from "./hardware";
+import { DEVICES, HW, STORAGE, type DeviceId } from "./hardware";
 import type { Config } from "./params";
-import { equilibrium, stability } from "./sensors";
+import { bclkOf, cpuGhz, equilibrium, memOf, stability } from "./sensors";
 
 export interface BootLine { text: string; cls?: "err" | "hl" }
 export interface BootFinal {
@@ -26,15 +26,21 @@ export function bootScript(c: Config, only?: DeviceId | null): { lines: BootLine
   const lines: BootLine[] = [];
   const L = (text: string, cls?: BootLine["cls"]) => lines.push({ text, cls });
   const temp = equilibrium(c);
-  const freq = ((c.cpuRatio || HW.baseRatio) / 10).toFixed(2);
+  const freq = cpuGhz(c).toFixed(2);
+  const mem = memOf(c);
+  /** Secure Boot действует, только когда CSM выключен */
+  const secure = c.secureBoot && !c.csm;
 
   L(`KESTREL UEFI BIOS ${HW.bios}`, "hl");
   L(`${HW.product}`);
   L(`CPU: ${HW.cpu} @ ${freq} GHz`);
-  L(`Memory: ${HW.ramTotalMb} MB DDR5 @ ${XMP[c.xmp].freq} MT/s${c.xmp !== "Disabled" ? ` (XMP ${c.xmp})` : ""}`);
+  L(`Memory: ${HW.ramTotalMb} MB DDR5 @ ${mem.freq} MT/s  CL${mem.cl}${c.xmp !== "Disabled" ? ` (XMP ${c.xmp})` : ""}`);
+  if (bclkOf(c) !== HW.bclk) L(`BCLK: ${bclkOf(c).toFixed(2)} MHz`);
   if (!c.fastBoot) {
-    if (c.xmp !== "Disabled" && c.memContext !== "Enabled" && stability(c).mem === "ok") L("Memory training ... OK");
+    if ((c.xmp !== "Disabled" || mem.manual) && c.memContext !== "Enabled" && stability(c).mem === "ok") L("Memory training ... OK");
+    if (c.csm) L("CSM: Enabled — legacy option ROMs loaded");
     L(`SVM Mode: ${c.virtualization ? "Enabled" : "Disabled"}`);
+    L(`Secure Boot: ${secure ? "Active" : "Not Active"}`);
     L(`SATA Mode: ${c.sataMode}`);
     L(`HD Audio Controller: ${c.hdAudio ? "Enabled" : "Disabled"}`);
     L(`TPM: ${c.ftpm}`);
@@ -98,7 +104,8 @@ export function bootScript(c: Config, only?: DeviceId | null): { lines: BootLine
         lines,
         final: {
           type: "os",
-          unstable: stab.cpu === "unstable",
+          // нестабильный разгон ядра или BCLK выше 103 МГц (сбоят накопители) — система упадёт
+          unstable: stab.cpu === "unstable" || bclkOf(c) > 103,
           title: l("Starting Kestrel OS", "Запуск Kestrel OS"),
           hint: l(
             `${c.virtualization ? "Virtualization on: VMs available." : "Virtualization off: VMs will not start."} ${c.hdAudio ? "Audio works." : "No audio: HD Audio disabled."}`,
@@ -114,7 +121,7 @@ export function bootScript(c: Config, only?: DeviceId | null): { lines: BootLine
       L("  PXE-M0F: Exiting PXE ROM.", "err");
     }
     if (dev === "USB") {
-      if (c.secureBoot) {
+      if (secure) {
         L("  Secure Boot Violation: Invalid signature detected.", "err");
         return {
           lines,
@@ -132,7 +139,9 @@ export function bootScript(c: Config, only?: DeviceId | null): { lines: BootLine
         final: {
           type: "linux",
           title: l("Live Linux — Try or Install", "Live Linux — Try or Install"),
-          hint: l("Booted from the USB drive. Secure Boot is off.", "Загрузка с флешки. Secure Boot выключен."),
+          hint: c.csm && c.secureBoot
+            ? l("Booted from the USB drive: CSM is on, so Secure Boot is not active.", "Загрузка с флешки: включён CSM, поэтому Secure Boot не действует.")
+            : l("Booted from the USB drive. Secure Boot is off.", "Загрузка с флешки. Secure Boot выключен."),
         },
       };
     }

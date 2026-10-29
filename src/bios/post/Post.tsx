@@ -1,8 +1,31 @@
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "../../machine/store";
-import { DEVICES, HW, XMP, type DeviceId } from "../../machine/hardware";
+import { DEVICES, HW, type DeviceId } from "../../machine/hardware";
+import { cpuGhz, memOf } from "../../machine/sensors";
 import { deviceAvailable } from "../../machine/boot";
 import { sound } from "../../machine/audio";
+
+/** Вход в Setup: если в BIOS задан пароль администратора — сначала спросить его. */
+export function guardedSetup(onCancel: () => void = () => useStore.getState().boot()) {
+  const s = useStore.getState();
+  const secret = s.saved.setupPassword as string;
+  if (!secret) return s.enterSetup();
+  let tries = 0;
+  const ru = s.saved.language === "Русский";
+  s.openDialog({
+    title: ru ? "Введите пароль" : "Enter Password",
+    password: {
+      hint: ru ? "Пароль администратора BIOS. Esc — отмена" : "BIOS administrator password. Esc to cancel",
+      onSubmit: (v) => {
+        if (v === secret) { useStore.getState().enterSetup(); return true; }
+        // после трёх неверных попыток система просто продолжает загрузку
+        if (++tries >= 3) { onCancel(); return true; }
+        return false;
+      },
+      onCancel,
+    },
+  });
+}
 
 /** Экран включения: логотип, DEL — Setup, F11 — Boot Menu. Если ничего не нажать — загрузка. */
 export function Post() {
@@ -21,7 +44,7 @@ export function Post() {
     if (!toSetup) return;
     const id = window.setTimeout(() => {
       useStore.getState().patch({ toSetup: false });
-      useStore.getState().enterSetup();
+      guardedSetup();
     }, 1400);
     return () => clearTimeout(id);
   }, [toSetup]);
@@ -45,14 +68,14 @@ export function Post() {
   const devices = (saved.bootOrder as DeviceId[]).filter((d) => deviceAvailable(saved, d));
   const menu = [
     ...devices.map((d) => ({ label: DEVICES[d].name, run: () => useStore.getState().boot(d) })),
-    { label: "Enter Setup", run: () => useStore.getState().enterSetup() },
+    { label: "Enter Setup", run: () => guardedSetup() },
   ];
 
   const enterSetup = () => {
     if (stage !== "splash") return;
     setStage("entering");
     setMsg("Entering Setup...");
-    later(() => useStore.getState().enterSetup(), 900);
+    later(() => guardedSetup(), 900);
   };
   const enterMenu = () => {
     if (stage !== "splash") return;
@@ -93,8 +116,8 @@ export function Post() {
 ${HW.product}
 
 CPU : ${HW.cpu}
-      Speed: ${((saved.cpuRatio || HW.baseRatio) / 10).toFixed(2)} GHz
-DRAM: ${HW.ramTotalMb} MB DDR5 @ ${XMP[saved.xmp].freq} MT/s
+      Speed: ${cpuGhz(saved).toFixed(2)} GHz
+DRAM: ${HW.ramTotalMb} MB DDR5 @ ${memOf(saved).freq} MT/s
 
 Initializing USB controllers .. Done.
 ${saved.usbStorage ? "1 Drive, " : ""}1 Keyboard, 1 Mouse`}

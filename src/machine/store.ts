@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { ReactNode } from "react";
 import { DEVICE_IDS, type DeviceId } from "./hardware";
 import { PARAMS, clone, defaults, type Config } from "./params";
-import { IDLE_WORKLOAD, activeCurve, initialThermal, stepThermal, type Power, type Thermal } from "./sensors";
+import { IDLE_WORKLOAD, activeCurve, initialThermal, readings, stepThermal, type Power, type Thermal } from "./sensors";
 import type { Lang } from "./i18n";
 
 export type Phase = "off" | "post" | "setup" | "boot" | "os";
@@ -15,6 +15,10 @@ export interface DialogSpec {
   onPick?: (v: any) => void;
   number?: { value: number; min: number; max: number; step: number; hint: string; onApply: (v: number) => void };
   buttons?: { label: string; run: () => void }[];
+  /** поле пароля: onSubmit возвращает true, если пароль принят (окно закрывается) */
+  password?: { hint: string; onSubmit: (v: string) => boolean; onCancel?: () => void };
+  /** прогресс (прошивка): 0…100, окно без кнопок */
+  progress?: number;
 }
 
 // ---------- CMOS (настройки переживают перезагрузку страницы) ----------
@@ -68,8 +72,10 @@ interface State {
   toSetup: boolean;
   /** загрузка процессора 0…1 — задаёт ОС по запущенным программам */
   load: number;
-  /** режим питания из пункта управления ОС */
+  /** режим питания из «Хаба» ОС */
   power: Power;
+  /** история датчиков раз в секунду, последние 90 с (графики Hardware Monitor) */
+  hist: { temp: number[]; rpm: number[]; vcore: number[]; acc: number };
 
   patch: (p: Partial<State>) => void;
   setParam: (id: string, v: unknown) => void;
@@ -94,6 +100,8 @@ interface State {
   setLanguage: (lang: "English" | "Русский") => void;
   /** вернуть множитель и напряжение процессора в Auto и записать в CMOS (после сбоя) */
   resetOverclock: () => void;
+  /** применить конфигурацию из ссылки: заводские настройки + присланные отличия (язык и пароль — свои) */
+  importConfig: (diff: Config) => void;
 }
 
 const initial = loadCmos();
@@ -117,6 +125,7 @@ export const useStore = create<State>((set, get) => ({
   toSetup: false,
   load: IDLE_WORKLOAD.load,
   power: IDLE_WORKLOAD.power,
+  hist: { temp: [], rpm: [], vcore: [], acc: 0 },
 
   patch: (p) => set(p),
   setParam: (id, v) => set((s) => ({ pending: { ...s.pending, [id]: v } })),
@@ -174,18 +183,33 @@ export const useStore = create<State>((set, get) => ({
   powerOn: () => set((s) => ({ phase: "post", override: null, dialog: null, thermal: initialThermal(s.saved) })),
   shutdown: () => set((s) => ({ phase: "off", override: null, dialog: null, pending: clone(s.saved) })),
 
-  tick: (dt) =>
-    set((s) => ({
-      thermal: stepThermal(s.thermal, s.phase === "setup" ? s.pending : s.saved, dt, s.phase === "os" ? { load: s.load, power: s.power } : IDLE_WORKLOAD),
-    })),
+  tick: (dt) => {
+    const s = get();
+    const c = s.phase === "setup" ? s.pending : s.saved;
+    const w = s.phase === "os" ? { load: s.load, power: s.power } : IDLE_WORKLOAD;
+    const thermal = stepThermal(s.thermal, c, dt, w);
+    let hist = { ...s.hist, acc: s.hist.acc + dt };
+    if (hist.acc >= 1) {
+      const r = readings(c, thermal, w);
+      const push = (a: number[], v: number) => [...a, v].slice(-90);
+      hist = { temp: push(hist.temp, r.temp), rpm: push(hist.rpm, r.rpm), vcore: push(hist.vcore, r.vcore), acc: 0 };
+    }
+    set({ thermal, hist });
+  },
   setLanguage: (language) => {
     const c = { ...clone(get().saved), language };
     writeCmos(c);
     set((s) => ({ saved: c, pending: { ...s.pending, language } }));
   },
+  importConfig: (diff) => {
+    const cur = get().saved;
+    const c = { ...defaults(), ...clone(diff), language: cur.language, setupPassword: cur.setupPassword };
+    writeCmos(c);
+    set({ saved: c, pending: clone(c), thermal: initialThermal(c) });
+  },
   resetOverclock: () => {
     const d = defaults();
-    const c = { ...clone(get().saved), cpuRatio: d.cpuRatio, cpuVcore: d.cpuVcore };
+    const c = { ...clone(get().saved), cpuRatio: d.cpuRatio, cpuVcore: d.cpuVcore, bclk: d.bclk, llc: d.llc };
     writeCmos(c);
     set({ saved: c, pending: clone(c) });
   },

@@ -3,6 +3,7 @@ import { useStore } from "../../machine/store";
 import { DEVICES, FAN_PRESETS, XMP, type DeviceId } from "../../machine/hardware";
 import { PARAMS } from "../../machine/params";
 import { openFavorites, openFlash } from "./actions";
+import { TABS } from "./menus";
 
 type S = ReturnType<typeof useStore.getState>;
 export type Zone = "nav" | "seg" | "tools" | "tiles" | "boot";
@@ -13,7 +14,7 @@ export const TILE_IDS = ["lanRom", "hdAudio", "fanFailWarn", "fastBoot", "sataMo
 export const TOOLS: (() => void)[] = [
   openFlash,
   openFavorites,
-  () => useStore.getState().patch({ mode: "adv", advTab: 4, advPath: [] }),
+  () => useStore.getState().patch({ mode: "adv", advTab: TABS.findIndex((t) => t.id === "monitor"), advPath: [] }),
 ];
 
 /** Переключатель профиля на вкладке (XMP или вентилятор). */

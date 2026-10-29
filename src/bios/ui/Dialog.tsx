@@ -1,17 +1,21 @@
 import { useEffect, useState } from "react";
 import { useStore, useLang } from "../../machine/store";
 
-/** Единое BIOS-окно: список вариантов, числовое поле или кнопки Yes/No. */
+/** Единое BIOS-окно: список вариантов, числовое поле, поле пароля, прогресс или кнопки Yes/No. */
 export function Dialog() {
   const d = useStore((s) => s.dialog);
   const { t } = useLang();
   const [focus, setFocus] = useState(0);
   const [num, setNum] = useState("");
+  const [pw, setPw] = useState("");
+  const [pwBad, setPwBad] = useState(0);
 
   useEffect(() => {
     if (!d) return;
     setFocus(d.list ? Math.max(0, d.list.findIndex((o) => o.value === d.current)) : 0);
     if (d.number) setNum(String(d.number.value));
+    setPw("");
+    setPwBad(0);
   }, [d]);
 
   // Закрыть окно после действия, если действие не открыло новое окно.
@@ -20,11 +24,18 @@ export function Dialog() {
     fn();
     if (useStore.getState().dialog === cur) useStore.getState().closeDialog();
   };
-  const close = () => useStore.getState().closeDialog();
+  const close = () => { d?.password?.onCancel?.(); useStore.getState().closeDialog(); };
+  const submitPw = () => {
+    if (!d?.password) return;
+    const cur = useStore.getState().dialog;
+    if (d.password.onSubmit(pw)) { if (useStore.getState().dialog === cur) useStore.getState().closeDialog(); return; }
+    setPw("");
+    setPwBad((n) => n + 1);
+  };
 
   const buttons = d?.number
     ? [{ label: "OK", run: () => applyNum() }, { label: t("Cancel", "Отмена"), run: () => {} }]
-    : d?.buttons ?? [];
+    : d?.password ? [] : d?.buttons ?? [];
 
   const pick = (i: number) => finish(() => d!.onPick?.(d!.list![i].value));
   const press = (i: number) => finish(() => buttons[i].run());
@@ -44,6 +55,12 @@ export function Dialog() {
     const onKey = (e: KeyboardEvent) => {
       e.stopImmediatePropagation();
       const k = e.key;
+      if (d.progress !== undefined) { e.preventDefault(); return; }
+      if (d.password) {
+        if (k === "Escape") { e.preventDefault(); close(); }
+        if (k === "Enter") { e.preventDefault(); submitPw(); }
+        return;
+      }
       const handled = ["Escape", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "+", "-", "Tab"].includes(k);
       if (!handled) return;
       e.preventDefault();
@@ -71,7 +88,7 @@ export function Dialog() {
   if (!d) return null;
 
   return (
-    <div className="dlg-wrap" onMouseDown={(e) => e.target === e.currentTarget && close()}>
+    <div className="dlg-wrap" onMouseDown={(e) => e.target === e.currentTarget && d.progress === undefined && close()}>
       <div className="dlg">
         <div className="dlg-title">{d.title}</div>
         {d.body && <div className="dlg-body">{d.body}</div>}
@@ -88,6 +105,15 @@ export function Dialog() {
               </div>
             ))}
           </div>
+        )}
+        {d.password && (
+          <div className="dlg-num">
+            <input className="dlg-pw" type="password" value={pw} autoFocus maxLength={20} onChange={(e) => setPw(e.target.value)} />
+            <div className={"dlg-hint" + (pwBad ? " crit" : "")}>{pwBad ? t(`Invalid Password (${pwBad})`, `Неверный пароль (${pwBad})`) : d.password.hint}</div>
+          </div>
+        )}
+        {d.progress !== undefined && (
+          <div className="dlg-progress"><i style={{ width: `${d.progress}%` }} /><span>{Math.floor(d.progress)}%</span></div>
         )}
         {d.number && (
           <div className="dlg-num">

@@ -5,7 +5,7 @@ export type Config = Record<string, any>;
 
 export interface Param {
   label: L;
-  type: "toggle" | "select" | "number" | "order" | "curve";
+  type: "toggle" | "select" | "number" | "order" | "curve" | "password";
   options?: string[];
   min?: number;
   max?: number;
@@ -46,6 +46,18 @@ export const PARAMS: Record<string, Param> = {
     help: l("0 = Auto: the board picks a safe voltage for the ratio. Manual value in mV (1350 = 1.350 V). Too low for the ratio → the OS crashes or POST fails; too high → extra heat.",
       "0 = Auto: плата сама подбирает безопасное напряжение под множитель. Ручное значение в мВ (1350 = 1,350 В). Слишком мало для множителя — ОС падает или POST не проходит; слишком много — лишний нагрев."),
   },
+  bclk: {
+    label: l("CPU BCLK Frequency", "Частота BCLK"), type: "number", min: 0, max: 10500, step: 25, default: 0, autoZero: 9500,
+    help: l("Base clock in hundredths of MHz (10000 = 100.00 MHz). 0 = Auto. CPU and memory frequency scale with it; above 103 MHz storage and PCIe get flaky.",
+      "Базовая частота в сотых МГц (10000 = 100,00 МГц). 0 = Auto. Частоты процессора и памяти растут вместе с ней; выше 103 МГц накопители и PCIe начинают сбоить."),
+  },
+  llc: select(l("CPU Load-Line Calibration", "Калибровка Load-Line (LLC)"), ["Auto", "Level 1", "Level 2", "Level 3", "Level 4", "Level 5"], "Auto",
+    l("Compensates voltage droop under load. Higher levels keep Vcore up: a heavy overclock becomes stable, but the CPU runs hotter.",
+      "Компенсирует просадку напряжения под нагрузкой. Чем выше уровень, тем стабильнее разгон, но процессор горячее.")),
+  pbo: select(l("Precision Boost Overdrive", "Precision Boost Overdrive"), ["Auto", "Disabled", "Enabled"], "Auto",
+    l("Raises power limits: +200 MHz boost under load and a few degrees more heat.", "Поднимает лимиты мощности: +200 МГц под нагрузкой и несколько градусов тепла.")),
+  thermalLimit: select(l("CPU Thermal Throttle Limit", "Порог троттлинга CPU"), ["Auto", "95 °C", "90 °C", "85 °C", "80 °C", "75 °C"], "Auto",
+    l("Temperature at which the CPU lowers its clock to cool down. Auto = 92 °C.", "Температура, с которой процессор снижает частоту, чтобы остыть. Auto = 92 °C.")),
   cpb: select(l("Core Performance Boost", "Core Performance Boost"), ["Auto", "Disabled"], "Auto",
     l("Lets the CPU boost above base clock under load. Adds a little heat.", "Разрешает процессору разгоняться выше базовой частоты под нагрузкой. Немного добавляет нагрева.")),
   smt: toggle(l("SMT Mode", "SMT (многопоточность)"), true,
@@ -63,6 +75,26 @@ export const PARAMS: Record<string, Param> = {
     label: l("DRAM Voltage", "Напряжение DRAM"), type: "number", min: 0, max: 1500, step: 5, default: 0, autoZero: 1100,
     help: l("0 = Auto: taken from the XMP profile. Manual value in mV. XMP Profile 1 needs at least 1.200 V, Profile 2 at least 1.330 V, otherwise memory training fails.",
       "0 = Auto: берётся из профиля XMP. Ручное значение в мВ. XMP Profile 1 требует не меньше 1,200 В, Profile 2 — не меньше 1,330 В, иначе тренировка памяти не пройдёт."),
+  },
+  dramFreq: select(l("DRAM Frequency", "Частота DRAM"), ["Auto", "DDR5-4800", "DDR5-5200", "DDR5-5600", "DDR5-6000", "DDR5-6400", "DDR5-6800"], "Auto",
+    l("Auto follows the XMP profile. A manual frequency needs enough DRAM voltage for the chosen timings, or memory training fails.",
+      "Auto — по профилю XMP. Ручной частоте нужно достаточно напряжения DRAM для выбранных таймингов, иначе тренировка памяти не пройдёт.")),
+  tCL: {
+    label: l("CAS Latency (tCL)", "CAS Latency (tCL)"), type: "number", min: 0, max: 50, step: 1, default: 0, autoZero: 26,
+    help: l("0 = Auto. Lower is faster. Frequency divided by tCL is how hard you push the memory: tighter needs more DRAM voltage.",
+      "0 = Auto. Меньше — быстрее. Частота, делённая на tCL, — насколько сильно нагружена память: плотнее — нужно больше напряжения DRAM."),
+  },
+  tRCD: {
+    label: l("RAS# to CAS# Delay (tRCD)", "RAS# to CAS# Delay (tRCD)"), type: "number", min: 0, max: 50, step: 1, default: 0, autoZero: 28,
+    help: l("0 = Auto. Delay between opening a row and reading a column.", "0 = Auto. Задержка между открытием строки и чтением столбца."),
+  },
+  tRP: {
+    label: l("Row Precharge Time (tRP)", "Row Precharge Time (tRP)"), type: "number", min: 0, max: 50, step: 1, default: 0, autoZero: 28,
+    help: l("0 = Auto. Time to close a row before opening the next one.", "0 = Auto. Время закрытия строки перед открытием следующей."),
+  },
+  tRAS: {
+    label: l("RAS# Active Time (tRAS)", "RAS# Active Time (tRAS)"), type: "number", min: 0, max: 120, step: 1, default: 0, autoZero: 48,
+    help: l("0 = Auto. Minimum time a row stays open.", "0 = Auto. Минимальное время, которое строка остаётся открытой."),
   },
   memContext: select(l("Memory Context Restore", "Memory Context Restore"), ["Auto", "Enabled", "Disabled"], "Auto",
     l("Skips memory training on subsequent boots.", "Пропускает тренировку памяти при следующих загрузках.")),
@@ -112,6 +144,9 @@ export const PARAMS: Record<string, Param> = {
     (c) => c.erp || !c.lanController),
 
   // Boot
+  csm: toggle(l("Launch CSM", "Запуск CSM"), false,
+    l("Compatibility Support Module for legacy boot. While CSM is on, Secure Boot cannot be active — unsigned loaders start.",
+      "Модуль совместимости для старой загрузки. Пока CSM включён, Secure Boot не работает — запускаются неподписанные загрузчики.")),
   fastBoot: toggle(l("Fast Boot", "Быстрая загрузка"), false,
     l("Skips part of POST: faster boot, less diagnostics, shorter time to press DEL.", "Пропускает часть POST: загрузка быстрее, меньше диагностики и меньше времени, чтобы нажать DEL.")),
   bootLogo: toggle(l("Full Screen Logo Display", "Полноэкранный логотип"), true,
@@ -121,12 +156,19 @@ export const PARAMS: Record<string, Param> = {
 
   // Security
   secureBoot: toggle(l("Secure Boot", "Безопасная загрузка"), true,
-    l("Only signed boot loaders may start. An unsigned Linux USB stick will be blocked.", "Разрешает только подписанные загрузчики. Неподписанная флешка с Linux будет заблокирована.")),
+    l("Only signed boot loaders may start. An unsigned Linux USB stick will be blocked. Unavailable while CSM is on.", "Разрешает только подписанные загрузчики. Неподписанная флешка с Linux будет заблокирована. Недоступно при включённом CSM."),
+    (c) => c.csm),
   secureBootMode: select(l("Secure Boot Mode", "Режим Secure Boot"), ["Standard", "Custom"], "Standard",
     l("Custom mode allows managing keys manually.", "Режим Custom позволяет управлять ключами вручную."),
-    (c) => !c.secureBoot),
+    (c) => !c.secureBoot || c.csm),
   ftpm: select(l("Security Device Support", "Устройство TPM"), ["AMD fTPM", "Discrete TPM", "Disabled"], "AMD fTPM",
     l("Trusted Platform Module used by the OS for encryption.", "Модуль TPM, который ОС использует для шифрования.")),
+
+  setupPassword: {
+    label: l("Administrator Password", "Пароль администратора"), type: "password", default: "",
+    help: l("Asked when entering Setup with DEL. Forgot it? Clear CMOS (F2 on a POST error, or Exit → Clear CMOS) removes it.",
+      "Спрашивается при входе в Setup по DEL. Забыли? Clear CMOS (F2 при ошибке POST или Exit → Clear CMOS) его сбросит."),
+  },
 
   // Fans
   fanProfile: select(l("CPU Fan Mode", "Режим вентилятора CPU"), [...Object.keys(FAN_PRESETS), "Custom"], "Standard",
@@ -136,6 +178,8 @@ export const PARAMS: Record<string, Param> = {
     label: l("CPU Fan Curve", "Кривая вентилятора CPU"), type: "curve", default: FAN_PRESETS.Standard.map((p) => [...p]),
     help: l("Custom fan curve points.", "Точки пользовательской кривой вентилятора."),
   },
+  sysFanProfile: select(l("Chassis Fan Mode", "Режим корпусных вентиляторов"), ["Silent", "Standard", "Turbo", "Full Speed"], "Standard",
+    l("Case fans move air through the case: faster means a few degrees cooler CPU and more noise.", "Корпусные вентиляторы продувают корпус: быстрее — процессор на несколько градусов холоднее, но шумнее.")),
   fanFailWarn: toggle(l("CPU Fan Fail Warning Control", "Предупреждение об отказе вентилятора"), true,
     l("Warns during POST if the CPU fan stops.", "Предупреждение на POST, если вентилятор CPU остановился.")),
 
@@ -161,6 +205,9 @@ export function formatValue(id: string, v: any, lang: Lang): string {
   if (p.type === "toggle") return v ? (lang === "ru" ? "Включено" : "Enabled") : (lang === "ru" ? "Выключено" : "Disabled");
   if (id === "cpuRatio") return v === 0 ? "Auto" : `${v} (${(v / 10).toFixed(1)} GHz)`;
   if (id === "cpuVcore" || id === "dramVoltage") return v === 0 ? "Auto" : `${(v / 1000).toFixed(3)} V`;
+  if (id === "bclk") return v === 0 ? "Auto" : `${(v / 100).toFixed(2)} MHz`;
+  if (p.type === "number" && v === 0 && p.autoZero) return "Auto";
+  if (p.type === "password") return v ? (lang === "ru" ? "Установлен" : "Installed") : (lang === "ru" ? "Не установлен" : "Not Installed");
   if (id === "bootOrder") return (v as DeviceId[]).map((d) => DEVICES[d].short).join(" → ");
   if (id === "fanCurve") return (v as Curve).map(([t, d]) => `${t}°/${d}%`).join("  ");
   return String(v);

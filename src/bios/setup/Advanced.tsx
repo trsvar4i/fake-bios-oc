@@ -1,10 +1,11 @@
 import { useEffect, useRef } from "react";
 import { useStore, useLang, isChanged } from "../../machine/store";
-import { DEVICES, type DeviceId } from "../../machine/hardware";
+import { DEVICES, HW, type DeviceId } from "../../machine/hardware";
 import { PARAMS, formatValue, isDisabled } from "../../machine/params";
 import { deviceAvailable } from "../../machine/boot";
-import { readings } from "../../machine/sensors";
-import { ACTIONS, confirmOverride, cycleParam, editParam, pickBootSlot } from "./actions";
+import { readings, tempClass, throttleAt, vcoreClass } from "../../machine/sensors";
+import { loadProfiles } from "../../machine/profiles";
+import { ACTIONS, confirmOverride, cycleParam, editParam, openProfile, pickBootSlot, toggleMode } from "./actions";
 import { FanCurve } from "./FanCurve";
 import { PAGE_TITLES, TABS, isSelectable, pageItems, type Item } from "./menus";
 
@@ -27,6 +28,7 @@ function activate(it: Item) {
   if (it.kind === "boot") pickBootSlot(it.index);
   if (it.kind === "action") ACTIONS[it.id]();
   if (it.kind === "override") confirmOverride(it.dev);
+  if (it.kind === "profile") openProfile(it.slot);
 }
 
 /** Клавиатура Advanced Mode. Возвращает true, если клавиша обработана. */
@@ -68,6 +70,7 @@ export function Advanced() {
   const cur = items[sel];
   const crumbs = [TABS[s.advTab].title, ...s.advPath.map((p) => PAGE_TITLES[p])].map((x) => x[lang]);
   const listRef = useRef<HTMLDivElement>(null);
+  const profiles = loadProfiles();
 
   // выбранный с клавиатуры пункт всегда в поле зрения
   useEffect(() => {
@@ -76,7 +79,8 @@ export function Advanced() {
 
   const rowFor = (it: Item, i: number) => {
     if (it.kind === "header") return <div key={i} className="row header">{it.label[lang]}</div>;
-    if (it.kind === "fan") return <div key={i} className="row fanrow"><FanCurve width={760} height={300} /></div>;
+    if (it.kind === "fan") return <div key={i} className="row fanrow"><FanCurve width={860} height={300} /></div>;
+    if (it.kind === "graph") return <div key={i} className="row graphrow"><MonitorGraphs /></div>;
 
     let label = "", val = "", valCls = "", cls = "row " + it.kind;
     if (it.kind === "info") {
@@ -90,7 +94,7 @@ export function Advanced() {
       if (isChanged(s, it.id)) cls += " changed";
       if (isDisabled(it.id, s.pending)) cls += " disabled";
     }
-    if (it.kind === "sub") label = "▸ " + it.label[lang];
+    if (it.kind === "sub") label = it.label[lang];
     if (it.kind === "boot") {
       const dev = s.pending.bootOrder[it.index] as DeviceId;
       label = `Boot Option #${it.index + 1}`;
@@ -103,6 +107,12 @@ export function Advanced() {
     if (it.kind === "override") {
       label = DEVICES[it.dev].name;
       if (!deviceAvailable(s.pending, it.dev)) cls += " disabled";
+    }
+    if (it.kind === "profile") {
+      const pr = profiles[it.slot];
+      label = `${t("Profile", "Профиль")} ${it.slot + 1}`;
+      val = pr ? pr.name : t("Empty", "Пусто");
+      valCls = pr ? "" : "dim";
     }
     if (isSelectable(it)) {
       cls += " selectable";
@@ -133,28 +143,129 @@ export function Advanced() {
         <div className="adv-list">
           <div className="crumbs">
             {s.advPath.length > 0 && (
-              <button className="back" onClick={() => s.patch({ advPath: s.advPath.slice(0, -1) })}>↶</button>
+              <button className="back" onClick={() => s.patch({ advPath: s.advPath.slice(0, -1) })} aria-label="Back">
+                <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" /></svg>
+              </button>
             )}
-            {crumbs.join(" \\ ")}
+            {crumbs.join("  \\  ")}
           </div>
-          <div className="items" ref={listRef}>{items.map(rowFor)}</div>
+          <div className="items" ref={listRef} key={selKey(s)}>{items.map(rowFor)}</div>
+          <div className="adv-help">
+            <span className="help-i">i</span>
+            <div className="help-text"><HelpFor it={cur} /></div>
+          </div>
         </div>
-        <aside className="adv-side">
-          <div className="side-title">{t("Help Info", "Справка")}</div>
-          <div className="help-text"><HelpFor it={cur} /></div>
-          <div className="side-keys">
-            <div><b>↑↓</b> {t("Select Item", "Выбор пункта")}</div>
-            <div><b>←→</b> {t("Select Menu", "Выбор раздела")}</div>
-            <div><b>Enter</b> {t("Select / Open", "Изменить / открыть")}</div>
-            <div><b>+/−</b> {t("Change Value", "Изменить значение")}</div>
-            <div><b>F6</b> {t("Optimized Defaults", "Заводские настройки")}</div>
-            <div><b>F7</b> EZ Mode</div>
-            <div><b>F10</b> {t("Save & Reset", "Сохранить и перезагрузить")}</div>
-            <div><b>Esc</b> {t("Back / Exit", "Назад / выход")}</div>
-          </div>
-        </aside>
+        <HwMonitor />
       </div>
+      <footer className="adv-foot">
+        <span className="af-item">{t("Last Modified", "Последнее изменение")}: {HW.buildDate}</span>
+        <span className="af-keys">
+          <span><b>←→</b> {t("Select Screen", "Раздел")}</span>
+          <span><b>↑↓</b> {t("Select Item", "Пункт")}</span>
+          <span><b>Enter</b> {t("Select", "Выбор")}</span>
+          <span><b>+/−</b> {t("Change Opt.", "Значение")}</span>
+          <span><b>F6</b> {t("Defaults", "Заводские")}</span>
+          <span><b>F10</b> {t("Save & Exit", "Сохранить")}</span>
+          <span><b>Esc</b> {t("Back", "Назад")}</span>
+        </span>
+        <button className="af-btn" onClick={toggleMode}>EZ Mode (F7) <svg viewBox="0 0 24 24"><path d="M14 5h5v5M19 5l-7 7M10 19H5v-5" /></svg></button>
+      </footer>
     </section>
+  );
+}
+
+/** Панель Hardware Monitor справа: процессор, память, напряжения, вентиляторы и живой график температуры. */
+export function HwMonitor() {
+  const s = useStore();
+  const { t } = useLang();
+  const r = readings(s.pending, s.thermal);
+  const temps = s.hist.temp;
+  const Cell = ({ k, v, cls }: { k: string; v: string; cls?: string }) => <div className="hm-cell"><span>{k}</span><b className={cls}>{v}</b></div>;
+  return (
+    <aside className="hwmon">
+      <div className="hm-title"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4" /></svg>Hardware Monitor</div>
+      <div className="hm-sec">
+        <div className="hm-head">CPU</div>
+        <div className="hm-grid">
+          <Cell k={t("Frequency", "Частота")} v={`${Math.round(Number(r.freq) * 1000)} MHz`} />
+          <Cell k={t("Temperature", "Температура")} v={`${r.temp.toFixed(0)} °C`} cls={tempClass(r.temp)} />
+          <Cell k="BCLK" v={`${r.bclk.toFixed(2)} MHz`} />
+          <Cell k={t("Core Voltage", "Напряжение")} v={`${r.vcore.toFixed(3)} V`} cls={vcoreClass(r.vcore)} />
+          <Cell k={t("Ratio", "Множитель")} v={`${r.multiplier}x`} />
+          <Cell k={t("Throttle at", "Троттлинг")} v={`${throttleAt(s.pending)} °C`} />
+        </div>
+        <Spark data={temps} min={30} max={100} mark={throttleAt(s.pending)} />
+      </div>
+      <div className="hm-sec">
+        <div className="hm-head">{t("Memory", "Память")}</div>
+        <div className="hm-grid">
+          <Cell k={t("Frequency", "Частота")} v={`${r.dramFreq} MT/s`} />
+          <Cell k={t("Voltage", "Напряжение")} v={`${r.dramV.toFixed(3)} V`} />
+          <Cell k={t("Capacity", "Объём")} v={`${HW.ramTotalMb} MB`} />
+          <Cell k={t("Timings", "Тайминги")} v={r.timings.split("-").slice(0, 3).join("-")} />
+        </div>
+      </div>
+      <div className="hm-sec">
+        <div className="hm-head">{t("Voltage", "Напряжения")}</div>
+        <div className="hm-grid">
+          <Cell k="+12V" v={`${r.v12.toFixed(3)} V`} />
+          <Cell k="+5V" v={`${r.v5.toFixed(3)} V`} />
+          <Cell k="+3.3V" v={`${r.v33.toFixed(3)} V`} />
+        </div>
+      </div>
+      <div className="hm-sec">
+        <div className="hm-head">{t("Fans", "Вентиляторы")}</div>
+        <div className="hm-grid">
+          <Cell k="CPU_FAN" v={`${r.rpm} RPM`} />
+          <Cell k="SYS_FAN1" v={`${r.sysRpm} RPM`} />
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+/** Мини-график: история датчика за последние секунды. */
+function Spark({ data, min, max, mark }: { data: number[]; min: number; max: number; mark?: number }) {
+  const W = 360, H = 64;
+  const y = (v: number) => H - ((Math.min(max, Math.max(min, v)) - min) / (max - min)) * H;
+  const pts = data.map((v, i) => `${(W * (i + 90 - data.length)) / 89},${y(v).toFixed(1)}`).join(" ");
+  return (
+    <svg className="spark" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+      {mark !== undefined && <line x1="0" x2={W} y1={y(mark)} y2={y(mark)} className="spark-mark" />}
+      {data.length > 1 && <polyline points={`${(W * (90 - data.length)) / 89},${H} ${pts} ${W},${H}`} className="spark-area" />}
+      {data.length > 1 && <polyline points={pts} className="spark-line" />}
+    </svg>
+  );
+}
+
+/** Графики на вкладке Monitor: температура CPU и обороты вентилятора за последние полторы минуты. */
+function MonitorGraphs() {
+  const s = useStore();
+  const { t } = useLang();
+  const limit = throttleAt(s.pending);
+  const chart = (title: string, data: number[], min: number, max: number, unit: string, cls: string, mark?: number) => {
+    const W = 420, H = 150;
+    const y = (v: number) => H - ((Math.min(max, Math.max(min, v)) - min) / (max - min)) * H;
+    const pts = data.map((v, i) => `${(W * (i + 90 - data.length)) / 89},${y(v).toFixed(1)}`).join(" ");
+    const last = data[data.length - 1];
+    return (
+      <div className={"mgraph " + cls}>
+        <div className="mg-head"><span>{title}</span><b>{last === undefined ? "—" : `${unit === "°C" ? last.toFixed(1) : Math.round(last)} ${unit}`}</b></div>
+        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+          {[0.25, 0.5, 0.75].map((f) => <line key={f} x1="0" x2={W} y1={H * f} y2={H * f} className="mg-grid" />)}
+          {mark !== undefined && <line x1="0" x2={W} y1={y(mark)} y2={y(mark)} className="spark-mark" />}
+          {data.length > 1 && <polyline points={`${(W * (90 - data.length)) / 89},${H} ${pts} ${W},${H}`} className="spark-area" />}
+          {data.length > 1 && <polyline points={pts} className="spark-line" />}
+        </svg>
+        <div className="mg-axis"><span>−90 s</span><span>{min}–{max} {unit}</span><span>{t("now", "сейчас")}</span></div>
+      </div>
+    );
+  };
+  return (
+    <div className="mgraphs">
+      {chart(t("CPU Temperature", "Температура CPU"), s.hist.temp, 30, 100, "°C", "mg-temp", limit)}
+      {chart("CPU_FAN", s.hist.rpm, 0, 2600, "RPM", "mg-fan")}
+    </div>
   );
 }
 
@@ -170,8 +281,7 @@ function HelpFor({ it }: { it?: Item }) {
         {isDisabled(it.id, s.pending) && <div className="help-note">{t("Unavailable with current settings.", "Недоступно при текущих настройках.")}</div>}
         {isChanged(s, it.id) && (
           <div className="diff">
-            {t("Saved", "Сохранено")}: {formatValue(it.id, s.saved[it.id], lang)}<br />
-            {t("New", "Новое")}: {formatValue(it.id, s.pending[it.id], lang)}
+            {t("Saved", "Сохранено")}: {formatValue(it.id, s.saved[it.id], lang)} → {t("New", "Новое")}: {formatValue(it.id, s.pending[it.id], lang)}
           </div>
         )}
       </>
@@ -179,9 +289,11 @@ function HelpFor({ it }: { it?: Item }) {
   }
   if (it.kind === "sub") return <>{t("Opens submenu", "Открывает подменю")}: {it.label[lang]}</>;
   if (it.kind === "boot")
-    return <>{PARAMS.bootOrder.help[lang]} {t("Choosing a device swaps it with the current one. You can also drag icons in the Boot Priority bar.", "Выбор устройства меняет его местами с текущим. Порядок также можно перетаскивать в полосе Boot Priority.")}</>;
+    return <>{PARAMS.bootOrder.help[lang]} {t("Choosing a device swaps it with the current one. In EZ Mode you can drag the icons.", "Выбор устройства меняет его местами с текущим. В EZ Mode иконки можно перетаскивать.")}</>;
   if (it.kind === "action") return <>{it.help[lang]}</>;
   if (it.kind === "override")
     return <>{t("Boot once from this device without changing Boot Priority.", "Загрузиться один раз с этого устройства, не меняя порядок загрузки.")}</>;
+  if (it.kind === "profile")
+    return <>{t("Save the current CPU, memory, voltage and fan settings to this slot, or load them back. Loaded values apply after F10.", "Сохранить текущие настройки процессора, памяти, напряжений и вентиляторов в этот слот или загрузить их обратно. Загруженное вступит в силу после F10.")}</>;
   return null;
 }

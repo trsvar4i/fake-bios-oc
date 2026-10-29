@@ -33,7 +33,7 @@ export function Setup() {
   }, []);
 
   return (
-    <div className="bios">
+    <div className={"bios mode-" + mode}>
       <Header />
       {mode === "ez" ? <EzMode /> : <Advanced />}
     </div>
