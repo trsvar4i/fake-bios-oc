@@ -1,8 +1,19 @@
-/* Notes: стили приложения (вынесены из os.css) */
-.notes { display: flex; flex-direction: column; height: 100%; }
-.notes-bar { display: flex; align-items: center; gap: 12px; padding: 6px 10px; border-bottom: 1px solid rgba(var(--fg), .08); }
-.notes-bar button { border: none; background: rgba(var(--fg), .08); color: inherit; padding: 4px 14px; border-radius: 6px; }
-.notes-saved { font-size: 13px; opacity: .5; }
-.notes textarea { flex: 1; resize: none; border: none; outline: none; padding: 14px 18px; background: #16181e; color: #e9eaf0; font-size: 17px; line-height: 1.5; }
-.notes-status { padding: 4px 12px; font-size: 13px; opacity: .6; border-top: 1px solid rgba(var(--fg), .08); }
-.notes textarea { background: var(--field-bg); color: var(--text); }
+/* Заметки: список слева, текст справа */
+.notes { display: grid; grid-template-columns: 250px 1fr; height: 100%; }
+.notes-list { display: flex; flex-direction: column; gap: 2px; padding: 8px; overflow: auto; border-right: 1px solid rgba(var(--fg), .08); background: rgba(var(--fg), .025); }
+.notes-bar { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 8px 8px; font-size: 13px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--text-2); }
+.notes-bar button { width: 28px; height: 28px; border-radius: 9px; background: rgba(var(--fg), .08); color: var(--text); font-size: 19px; line-height: 1; }
+.notes-bar button:hover { background: var(--sel); }
+.note-item { display: flex; flex-direction: column; gap: 2px; padding: 9px 10px; border-radius: 11px; text-align: left; color: var(--text); animation: page-in .3s var(--ease) both; }
+.note-item:hover { background: rgba(var(--fg), .06); }
+.note-item.on { background: var(--sel); box-shadow: inset 3px 0 0 #f59e0b; }
+.note-item b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.note-item small { font-size: 12.5px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.notes-main { display: flex; flex-direction: column; min-width: 0; }
+.notes-main textarea { flex: 1; resize: none; border: none; outline: none; padding: 18px 22px; background: transparent; color: var(--text); font-size: 17px; line-height: 1.55; }
+.notes-status { display: flex; align-items: center; gap: 16px; padding: 6px 12px; font-size: 13px; color: var(--text-2); border-top: 1px solid rgba(var(--fg), .08); }
+.notes-status span:first-child { margin-right: auto; }
+.notes-status button { padding: 3px 10px; border-radius: 8px; background: rgba(var(--fg), .07); color: var(--text); font-size: 13px; }
+.notes-status button:hover { background: rgba(229, 72, 77, .2); }
+.notes-empty { padding: 20px 10px; color: var(--text-2); font-size: 14px; text-align: center; }
+.notes-empty.big { margin: auto; }

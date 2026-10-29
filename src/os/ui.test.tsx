@@ -9,6 +9,7 @@ import { useStore } from "../machine/store";
 import { Calculator } from "./apps/Calculator";
 import { Terminal } from "./apps/Terminal";
 import { AppStore } from "./apps/AppStore";
+import { ensureNotes } from "./apps/Notes";
 
 const initialFs = useFs.getState().nodes;
 const initialPrefs = useOs.getState().prefs;
@@ -71,5 +72,16 @@ describe("Магазин", () => {
     useStore.setState({ saved: { ...useStore.getState().saved, lanController: false } });
     render(<AppStore />);
     for (const b of screen.getAllByText("Get")) expect((b as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe("Заметки", () => {
+  it("старая заметка из настроек переезжает файлом в ~/Notes — один раз", () => {
+    useOs.getState().setPref("notes", "купить молоко");
+    ensureNotes(false);
+    ensureNotes(false);
+    expect(useFs.getState().read("~/Notes/Note.txt")).toBe("купить молоко");
+    expect(useFs.getState().list("~/Notes").length).toBe(1);
+    expect(useOs.getState().prefs.notes).toBe("");
   });
 });

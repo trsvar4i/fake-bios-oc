@@ -13,6 +13,7 @@ import { FileItem, ctxAt, itemMenu, openPath, useDrop } from "./apps/Finder";
 import { cmd, handleShortcut, switcherCommit } from "./commands";
 import { useTimerService } from "./apps/Clock";
 import { useLoadService } from "./load";
+import { ensureNotes } from "./apps/Notes";
 import { onQuest, unlock } from "../machine/quests";
 import { useStore } from "../machine/store";
 import { cpuGhz } from "../machine/sensors";
@@ -72,6 +73,7 @@ export function Desktop() {
   useEffect(() => {
     const m = useStore.getState();
     unlock("boot");
+    ensureNotes(m.pending.language === "Русский");
     if (cpuGhz(m.saved) >= 5 && !m.osUnstable) unlock("oc5");
     if (!m.saved.lanController) unlock("offline");
     return onQuest((q) => {

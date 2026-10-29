@@ -5,29 +5,35 @@ import { useOs } from "../osStore";
 import { isTrashed, useFs } from "../fs";
 import "./Care.css";
 
-interface Report { trash: number; cache: number; notices: number }
+interface Report { trash: number; bytes: number; notices: number }
 
-/** «Обслуживание»: одна кнопка вместо скриптов — очищает Корзину, кэш, уведомления и даёт советы по BIOS. */
+/** Размер в байтах, КБ или МБ. */
+const fmtSize = (n: number, ru: boolean) => (n < 1024 ? `${n} ${ru ? "Б" : "B"}` : n < 1048576 ? `${(n / 1024).toFixed(1)} ${ru ? "КБ" : "KB"}` : `${(n / 1048576).toFixed(1)} ${ru ? "МБ" : "MB"}`);
+
+/** «Обслуживание»: одна кнопка вместо скриптов — очищает Корзину и уведомления, останавливает стресс-тест и даёт советы по BIOS. */
 export function Care() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const s = useStore();
   const r = readings(s.saved, s.thermal, s);
   const [step, setStep] = useState<"idle" | "scan" | "done">("idle");
   const [stage, setStage] = useState(0);
   const [report, setReport] = useState<Report | null>(null);
 
-  const stages = [t("Looking for junk…", "Ищем мусор…"), t("Emptying Trash…", "Очищаем Корзину…"), t("Clearing caches…", "Чистим кэш…"), t("Checking cooling…", "Проверяем охлаждение…")];
+  const stages = [t("Looking for junk…", "Ищем мусор…"), t("Emptying Trash…", "Очищаем Корзину…"), t("Clearing notifications…", "Убираем уведомления…"), t("Checking cooling…", "Проверяем охлаждение…")];
   const run = () => {
     setStep("scan");
     setStage(0);
     stages.forEach((_, i) => window.setTimeout(() => setStage(i), i * 700));
     window.setTimeout(() => {
       const fs = useFs.getState();
-      const trash = Object.keys(fs.nodes).filter(isTrashed).length;
+      // настоящие числа: сколько объектов лежало в Корзине и сколько они весили
+      const junk = Object.keys(fs.nodes).filter(isTrashed);
+      const trash = junk.length;
+      const bytes = junk.reduce((sum, p) => sum + new Blob([fs.nodes[p].content ?? ""]).size, 0);
       fs.emptyTrash();
       const notices = useOs.getState().notices.length;
       useOs.setState({ notices: [], stressUntil: 0 });
-      setReport({ trash, cache: 120 + Math.round(Math.random() * 380), notices });
+      setReport({ trash, bytes, notices });
       setStep("done");
     }, stages.length * 700 + 300);
   };
@@ -37,7 +43,7 @@ export function Care() {
   if (r.throttled) tips.push(t("The CPU is throttling from heat. In BIOS pick a stronger fan profile or lower the CPU ratio.", "Процессор перегревается и сбрасывает частоту. В BIOS выберите профиль вентиляторов посильнее или снизьте множитель."));
   if (s.saved.xmp === "Disabled") tips.push(t("Memory runs at base speed. Turn on XMP in BIOS for faster RAM.", "Память работает на базовой частоте. Включите XMP в BIOS — будет быстрее."));
   if (!s.saved.virtualization) tips.push(t("Virtualization is off — Kestrel VM can't start. Enable SVM Mode in BIOS.", "Виртуализация выключена — Kestrel VM не запустится. Включите SVM Mode в BIOS."));
-  if (s.power === "quiet") tips.push(t("Quiet power mode lowers the clock. Switch to Balanced in Control Center for full speed.", "Режим «Тихий» снижает частоту. Для полной скорости переключитесь на «Баланс» в пункте управления."));
+  if (s.power === "quiet") tips.push(t("Quiet power mode lowers the clock. Switch to Balanced in the Hub for full speed.", "Режим «Тихий» снижает частоту. Для полной скорости переключитесь на «Баланс» в «Хабе»."));
 
   return (
     <div className="care">
@@ -62,8 +68,8 @@ export function Care() {
         <div className="care-report">
           <h2>{t("All clean", "Всё чисто")}</h2>
           <div className="care-stats">
-            <div><b>{report.cache} {t("MB", "МБ")}</b><span>{t("cache freed", "кэша освобождено")}</span></div>
             <div><b>{report.trash}</b><span>{t("items removed from Trash", "объектов удалено из Корзины")}</span></div>
+            <div><b>{fmtSize(report.bytes, lang === "ru")}</b><span>{t("disk space freed", "места освобождено")}</span></div>
             <div><b>{report.notices}</b><span>{t("notifications cleared", "уведомлений убрано")}</span></div>
           </div>
           <button className="set-btn" onClick={() => setStep("idle")}>{t("Done", "Готово")}</button>

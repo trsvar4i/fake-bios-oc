@@ -10,6 +10,8 @@ import { dayKey, monthGrid } from "./apps/Calendar";
 import { toggleReminder } from "./apps/Reminders";
 import { stageScale, useNow, usePresence, useTimeFormat } from "./util";
 import { ctxAt } from "./apps/Finder";
+import { useNoteFiles } from "./apps/Notes";
+import { useFs } from "./fs";
 
 export const WSIZE = { s: { w: 176, h: 176 }, m: { w: 372, h: 176 } };
 const GRID = 196;
@@ -264,7 +266,8 @@ function SystemW({ size }: { size: "s" | "m" }) {
 
 function NotesW({ size }: { size: "s" | "m" }) {
   const { t } = useLang();
-  const text = useOs((s) => s.prefs.notes);
+  const latest = useNoteFiles()[0];
+  const text = useFs((s) => (latest ? s.read(latest) ?? "" : ""));
   return (
     <div className={"w-notes " + size}>
       <div className="w-notes-head">{t("Notes", "Заметки")}</div>

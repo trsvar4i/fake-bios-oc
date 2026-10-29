@@ -51,7 +51,7 @@ button { font: inherit; color: inherit; background: none; border: none; padding:
 
 
 /* ---------- знакомство при первом запуске ---------- */
-.tour { position: absolute; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, .55); backdrop-filter: blur(6px); animation: tour-fade .4s ease both; font-family: -apple-system, "Inter", "Segoe UI", sans-serif; }
+.tour { position: absolute; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, .55); backdrop-filter: blur(6px); animation: tour-fade .4s ease both; font-family: "Manrope", "Inter", "Segoe UI", sans-serif; }
 @keyframes tour-fade { from { opacity: 0; } }
 .tour-card { width: 760px; padding: 44px 52px 34px; border-radius: 28px; background: rgba(28, 28, 32, .92); box-shadow: 0 0 0 1px rgba(255, 255, 255, .12), 0 40px 100px rgba(0, 0, 0, .6); color: #f2f3f7; text-align: center; animation: tour-in .45s cubic-bezier(.22, 1, .36, 1) both; }
 @keyframes tour-in { from { opacity: 0; transform: translateY(20px) scale(.98); } }

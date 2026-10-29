@@ -1,19 +1,45 @@
-/* VmApp: стили приложения (вынесены из os.css) */
-.vmapp { display: grid; grid-template-columns: 260px 1fr; height: 100%; }
-.vm-list { border-right: 1px solid rgba(var(--fg), .08); padding: 12px; }
-.vm-list-title { font-size: 14px; opacity: .6; margin-bottom: 10px; }
-.vm-item { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 8px; }
+/* Kestrel VM: список машин и «экран» гостевой системы */
+.vmapp { display: grid; grid-template-columns: 240px 1fr; height: 100%; }
+.vm-list { display: flex; flex-direction: column; gap: 2px; border-right: 1px solid rgba(var(--fg), .08); padding: 12px; }
+.vm-list-title { font-size: 13px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--text-2); margin: 0 4px 8px; }
+.vm-item { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; cursor: pointer; transition: background .2s; }
 .vm-item:hover { background: rgba(var(--fg), .06); }
-.vm-item.sel { background: rgba(167, 123, 255, .22); }
-.vm-state { font-size: 13px; opacity: .7; }
-.vm-state.running { color: #4ade80; opacity: 1; }
-.vm-main { padding: 16px 24px; overflow: auto; }
-.vm-specs { opacity: .7; margin-bottom: 14px; }
-.vm-actions { display: flex; gap: 10px; }
-.vm-actions .primary { background: #7b4dff; border-color: #7b4dff; }
-.vm-error { margin-top: 18px; padding: 14px 16px; border-radius: 10px; background: rgba(255, 90, 90, .12); border: 1px solid rgba(255, 90, 90, .4); }
+.vm-item.sel { background: rgba(167, 123, 255, .2); box-shadow: inset 3px 0 0 #a78bfa; }
+.vm-state { font-size: 13px; color: var(--text-2); }
+.vm-state.running { color: #4ade80; }
+.vm-state.post, .vm-state.booting { color: #fbbf24; }
+.vm-hw { margin-top: auto; padding: 10px 12px; border-radius: 12px; background: rgba(229, 72, 77, .12); font-size: 13px; color: var(--text-2); }
+.vm-hw.ok { background: rgba(74, 222, 128, .1); }
+.vm-hw b { color: var(--text); }
+.vm-main { display: flex; flex-direction: column; gap: 12px; padding: 14px 20px 18px; overflow: auto; min-width: 0; }
+.vm-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.vm-top h2 { margin: 2px 0 2px !important; }
+.vm-specs { color: var(--text-2); font-size: 14px; }
+.vm-actions { display: flex; gap: 8px; }
+.vm-actions .primary { background: #7c3aed !important; color: #fff; }
+.vm-error { padding: 14px 16px; border-radius: 14px; background: rgba(229, 72, 77, .12); box-shadow: inset 0 0 0 1px rgba(229, 72, 77, .4); }
 .vm-error p { margin: 8px 0 12px; opacity: .9; }
-.vm-console { margin-top: 18px; padding: 14px; border-radius: 8px; background: #050506; font-family: "JetBrains Mono", monospace; font-size: 14px; min-height: 200px; white-space: pre-wrap; }
-/* консоль ВМ всегда тёмная — текст светлый и в светлом оформлении */
-.vm-console { color: #e8e8ea; }
-.vm-actions .primary { color: #fff; }
+.vm-screen { position: relative; flex: 1; min-height: 300px; border-radius: 12px; overflow: hidden; background: #000; color: #d4d4d8; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), 0 10px 30px rgba(0, 0, 0, .3); }
+.vm-off { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #52525b; font-size: 15px; }
+.vm-post { padding: 20px 24px; font-family: "JetBrains Mono", monospace; font-size: 14px; animation: os-fade-in .3s ease both; }
+.vm-post-logo { font-family: "Orbitron", sans-serif; font-size: 34px; letter-spacing: 8px; color: #fff; margin-bottom: 16px; }
+.vm-post-logo span { margin-left: 12px; color: #a78bfa; font-size: 20px; }
+.vm-post pre { margin: 0; line-height: 1.5; }
+.vm-console { height: 100%; margin: 0; padding: 12px 14px; overflow: auto; font-family: "JetBrains Mono", monospace; font-size: 13.5px; line-height: 1.45; white-space: pre-wrap; color: #e4e4e7; }
+.vm-console.live { cursor: text; user-select: text; }
+.vm-prompt { display: flex; gap: 8px; }
+.vm-prompt span { color: #86efac; }
+.vm-prompt input { flex: 1; border: none; outline: none; background: none; color: #e4e4e7; font: inherit; caret-color: #86efac; }
+.vm-kboot { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; background: #0a0a0c; font-size: 15px; color: #a1a1aa; }
+.vm-kboot span { animation: page-in .4s var(--ease) both; }
+.vm-desk { position: absolute; inset: 0; animation: os-fade-in .6s ease both; }
+.vm-desk .wallpaper-art { position: absolute; inset: 0; width: 100%; height: 100%; }
+.vm-win { position: absolute; left: 50%; top: 40%; width: 360px; transform: translate(-50%, -50%); border-radius: 12px; overflow: hidden; background: rgba(26, 26, 31, .92); color: #f3f4f7; box-shadow: 0 16px 40px rgba(0, 0, 0, .45); animation: win-open .4s var(--spring) both; }
+.vm-win-title { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px 8px 14px; font-size: 13px; font-weight: 700; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+.vm-win-title button { width: 22px; height: 22px; border-radius: 7px; color: #a1a1aa; }
+.vm-win-title button:hover { background: #e5484d; color: #fff; }
+.vm-win p { margin: 0; padding: 12px 14px 14px; font-size: 13.5px; line-height: 1.45; color: #d4d4d8; }
+.vm-perch { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 12px; background: rgba(20, 20, 26, .55); backdrop-filter: blur(10px); color: #fff; }
+.vm-perch span { display: flex; cursor: pointer; }
+.vm-nest { width: 26px; height: 26px; align-items: center; justify-content: center; border-radius: 8px; background: #22c55e; }
+.vm-perch b { margin-left: 6px; font-size: 12px; font-variant-numeric: tabular-nums; }

@@ -9,6 +9,8 @@ import { Os } from "./os/Os";
 import { Tour } from "./Tour";
 import { TouchLayer } from "./Touch";
 import { QuestToast } from "./QuestToast";
+import { parseShared } from "./machine/profiles";
+import { PARAMS, formatValue } from "./machine/params";
 
 const STAGE_W = 1920;
 const STAGE_H = 1080;
@@ -32,8 +34,34 @@ function Stage({ children }: { children: ReactNode }) {
   );
 }
 
+/** Ссылка с #cfg=…: предложить применить присланные настройки BIOS. */
+function offerSharedConfig() {
+  const cfg = parseShared(location.hash);
+  if (!cfg) return;
+  const clear = () => history.replaceState(null, "", location.pathname + location.search);
+  const s = useStore.getState();
+  const ru = s.saved.language === "Русский";
+  const lang = ru ? "ru" : "en";
+  s.openDialog({
+    title: ru ? "Настройки BIOS по ссылке" : "Shared BIOS Configuration",
+    body: (
+      <>
+        <p>{ru ? "Кто-то поделился своими настройками BIOS. Применить их к этому компьютеру? Остальное вернётся к заводским значениям." : "Someone shared their BIOS settings. Apply them to this PC? Everything else returns to factory defaults."}</p>
+        <table className="changes"><tbody>
+          {Object.entries(cfg).map(([k, v]) => <tr key={k}><td>{PARAMS[k].label[lang]}</td><td className="new">{formatValue(k, v, lang)}</td></tr>)}
+        </tbody></table>
+      </>
+    ),
+    buttons: [
+      { label: ru ? "Применить" : "Apply", run: () => { useStore.getState().importConfig(cfg); clear(); } },
+      { label: ru ? "Не надо" : "Ignore", run: clear },
+    ],
+  });
+}
+
 export function App() {
   const phase = useStore((s) => s.phase);
+  useEffect(offerSharedConfig, []);
 
   // тепловая модель живёт всегда, даже на POST
   useEffect(() => {

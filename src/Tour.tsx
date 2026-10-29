@@ -1,4 +1,4 @@
-// Первый запуск: короткое знакомство на экране питания — что здесь можно делать и как «сломать» компьютер.
+// Первый запуск: знакомство на экране питания в две карточки — что здесь можно делать и как «сломать» компьютер.
 import { useState } from "react";
 import { useLang } from "./machine/store";
 
@@ -13,13 +13,11 @@ export function Tour() {
 
   const steps = [
     { icon: "⏻", title: t("A whole PC in your browser", "Целый компьютер в браузере"),
-      text: t("Press the power button: the PC runs POST, starts the firmware and boots Kestrel OS.", "Нажмите кнопку питания: компьютер пройдёт POST, запустит прошивку и загрузит Kestrel OS.") },
-    { icon: "⚙", title: t("BIOS is real here", "Здесь настоящий BIOS"),
-      text: t("Press DEL while the logo is shown to open Setup, F11 for the Boot Menu. Settings are saved and change how the PC behaves.", "Пока виден логотип, нажмите DEL — откроется Setup, F11 — меню загрузки. Настройки сохраняются и меняют поведение компьютера.") },
-    { icon: "°C", title: t("Overclock — and break it", "Разгоните — и сломайте"),
-      text: t("Raise the CPU ratio without voltage and the OS will crash. Turn off the fans and it will overheat. Turn off the network card and the App Store goes offline.", "Поднимите множитель без напряжения — система упадёт. Выключите вентиляторы — перегреется. Отключите сетевую карту — Магазин останется без сети.") },
-    { icon: "✦", title: t("Then explore the OS", "А потом — система"),
-      text: t("Islands at the top, Dock with apps, widgets, desktops. Alt works as ⌘: Alt+` switches apps, Alt+↑ shows all windows.", "Островки сверху, Dock с программами, виджеты, рабочие столы. Alt работает как ⌘: Alt+` — переключение программ, Alt+↑ — все окна.") },
+      text: t("Press the power button: POST, a real-feeling UEFI BIOS and Kestrel OS. Press DEL on the logo to enter Setup, F11 for the Boot Menu.",
+        "Нажмите кнопку питания: POST, настоящий UEFI BIOS и Kestrel OS. DEL на логотипе — вход в Setup, F11 — меню загрузки.") },
+    { icon: "°C", title: t("Settings really matter", "Настройки имеют значение"),
+      text: t("Overclock without voltage — the OS crashes. Silent fans — it overheats. No LAN — no internet. Collect all the Challenges.",
+        "Разгон без напряжения — система падает. Тихие вентиляторы — перегрев. Нет LAN — нет интернета. Соберите все испытания.") },
   ];
   const s = steps[step];
   return (
