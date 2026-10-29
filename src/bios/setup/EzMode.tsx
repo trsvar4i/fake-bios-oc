@@ -114,7 +114,7 @@ function CpuTab() {
         <div className="ez-note">{t("Ratio, core voltage and boost: Advanced Mode (F7) → Advanced → CPU Configuration.", "Множитель, напряжение ядра и буст: Advanced Mode (F7) → Advanced → CPU Configuration.")}</div>
       </div>
       <Spec rows={[
-        ["CPU Base Clock", `${HW.bclk.toFixed(2)} MHz`],
+        ["CPU Base Clock", `${r.bclk.toFixed(2)} MHz`, ch("bclk")],
         ["CPU Ratio", s.pending.cpuRatio ? `${s.pending.cpuRatio}` : `Auto (${HW.baseRatio})`, ch("cpuRatio")],
         ["Core Number", HW.cores],
         ["Thread Number", s.pending.smt ? HW.threads : HW.cores, ch("smt")],

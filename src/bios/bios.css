@@ -30,11 +30,11 @@
   clip-path: polygon(0 0, 100% 0, 93% 100%, 7% 100%);
 }
 .mode-btn:hover { color: var(--value); background: var(--red-dim); }
-.tb-right { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
-.tb-btn { padding: 4px 14px; color: var(--muted); border: 1px solid transparent; }
+.tb-right { display: flex; justify-content: flex-end; align-items: center; gap: 4px; white-space: nowrap; }
+.tb-btn { padding: 4px 10px; white-space: nowrap; color: var(--muted); border: 1px solid transparent; }
 .tb-btn:hover { color: var(--value); border-color: var(--red-dim); }
 .tb-btn.x { font-size: 26px; }
-.dirty { color: var(--changed); margin-right: 12px; font-size: 19px; }
+.dirty { color: var(--changed); margin-right: 10px; font-size: 19px; white-space: nowrap; }
 
 .infobar { display: grid; grid-template-columns: 470px 1fr; border-bottom: 1px solid var(--line); }
 .clockbox { padding: 22px 30px; border-right: 1px solid var(--line); }
@@ -344,7 +344,7 @@
 .power-label { font-size: 30px; color: #b0b0b8; }
 .power-note { font-size: 20px; }
 .power-sound { position: absolute; right: 40px; bottom: 30px; }
-.sound-btn { display: inline-flex; align-items: center; gap: 8px; }
+.sound-btn { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 .sound-btn .icon { width: 24px; height: 24px; }
 .power .sound-btn { color: #6a6a72; font-size: 20px; }
 .power .sound-btn:hover { color: #b0b0b8; }

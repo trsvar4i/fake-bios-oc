@@ -35,7 +35,7 @@ export function Header() {
           {s.mode === "ez" ? t("Advanced (F7)", "Расширенный (F7)") : "EZ Mode (F7)"}
         </button>
         <div className="tb-right">
-          {changedIds(s).length > 0 && <span className="dirty">● {t("Unsaved changes", "Есть несохранённые изменения")}</span>}
+          {changedIds(s).length > 0 && <span className="dirty" title={t("Unsaved changes", "Есть несохранённые изменения")}>● {changedIds(s).length} {t("unsaved", "не сохр.")}</span>}
           <button className="tb-btn" onClick={openFavorites}>F3 {t("Favorites", "Избранное")}</button>
           <button className="tb-btn" onClick={confirmDefaults}>F6 {t("Defaults", "По умолчанию")}</button>
           <button className="tb-btn" onClick={confirmSave}>F10 {t("Save", "Сохранить")}</button>
