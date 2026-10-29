@@ -14,13 +14,15 @@ export function BootScreen() {
   const [shown, setShown] = useState(0);
   const [done, setDone] = useState(false);
   const { final } = script;
+  // С логотипом и успешной загрузкой ОС текст POST не показывается: логотип плавно гаснет (quiet splash).
+  const quiet = useMemo(() => useStore.getState().saved.bootLogo && final.type === "os", [final]);
 
   useEffect(() => {
-    const delay = useStore.getState().saved.fastBoot ? 90 : 220;
+    const delay = quiet ? 60 : useStore.getState().saved.fastBoot ? 90 : 220;
     const ids = script.lines.map((_, i) => window.setTimeout(() => setShown(i + 1), i * delay));
     ids.push(window.setTimeout(() => setDone(true), script.lines.length * delay + 400));
     return () => ids.forEach(clearTimeout);
-  }, [script]);
+  }, [script, quiet]);
 
   // звук устройств по мере появления строк
   useEffect(() => {
@@ -75,6 +77,18 @@ export function BootScreen() {
             <span onClick={() => useStore.getState().enterSetup()}>Press <b>F1</b> to Run SETUP</span>
             <span onClick={() => useStore.getState().clearCmos()}>Press <b>F2</b> to Load Default Values and Continue</span>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (quiet) {
+    return (
+      <div className="post boot-quiet">
+        <div className="post-logo">
+          <div className="pl-mark" />
+          <div className="pl-text">KESTREL</div>
+          <div className="pl-sub">NIGHTFALL SERIES</div>
         </div>
       </div>
     );

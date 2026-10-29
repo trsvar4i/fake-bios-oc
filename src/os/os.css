@@ -1,13 +1,50 @@
-/* Kestrel OS — базовые стили. Оболочка будет переделана под дизайн-систему из spec. */
+/* Kestrel OS. Дизайн-система — docs/os-design.md, этап 2.
+   --accent и --glass задаются из обоев (wallpapers.ts) на корне .os. */
 .os {
+  --bg: #0a0a0c;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --text: #f2f3f7;
+  --text-2: rgba(242, 243, 247, 0.64);
+  --line: rgba(255, 255, 255, 0.14);
+  --line-soft: rgba(255, 255, 255, 0.08);
+  --blur: blur(28px) saturate(160%);
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
   position: absolute;
   inset: 0;
   font-family: "Inter", "Segoe UI", system-ui, sans-serif;
   font-size: 18px;
-  color: #f2f3f7;
-  background: #0a0a0c;
+  color: var(--text);
+  background: var(--bg);
   user-select: none;
 }
+
+/* Smart Glass: матовое стекло с оттенком обоев и тонким светлым контуром */
+.glass {
+  background: var(--glass);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), var(--shadow);
+}
+
+.fade-in { animation: os-fade-in 0.8s var(--ease) both; }
+@keyframes os-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* экран старта: свечение логотипа, кольцо, статусы */
+.boot-glow { animation: logo-breathe 2.6s ease-in-out infinite; }
+@keyframes logo-breathe {
+  0%, 100% { filter: drop-shadow(0 0 14px rgba(124, 196, 255, 0.35)); }
+  50% { filter: drop-shadow(0 0 34px rgba(124, 196, 255, 0.75)); }
+}
+.ring { animation: ring-spin 1.1s linear infinite; }
+.ring-track { fill: none; stroke: rgba(255, 255, 255, 0.1); stroke-width: 3; }
+.ring-arc { fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 32 126; }
+@keyframes ring-spin { to { transform: rotate(360deg); } }
+.boot-status { height: 30px; font-size: 22px; color: var(--text-2); letter-spacing: 0.2px; }
+.boot-status span { display: block; animation: status-in 0.5s var(--ease) both; }
+@keyframes status-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .os input, .os textarea { user-select: text; font: inherit; }
 .os button { font: inherit; }
 
@@ -18,11 +55,8 @@
 .wp-graphite { background: radial-gradient(ellipse at 30% 20%, #6b7385 0%, transparent 60%), #15171c; }
 
 /* загрузка / выход */
-.os-boot { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 40px; background: #0a0a0c; }
-.os-logo { filter: drop-shadow(0 0 18px rgba(124, 196, 255, .45)); }
-.os-spinner { width: 44px; height: 44px; border: 3px solid rgba(255, 255, 255, .15); border-top-color: #fff; border-radius: 50%; animation: os-spin 1s linear infinite; }
-@keyframes os-spin { to { transform: rotate(360deg); } }
-.os-leaving { font-size: 26px; opacity: .8; }
+.os-boot { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 44px; background: var(--bg); }
+.os-leaving { font-size: 24px; color: var(--text-2); }
 
 /* блокировка */
 .lock { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -61,7 +95,7 @@
 .ctxmenu button:hover { background: rgba(255, 255, 255, .12); }
 
 /* окна */
-.win { position: absolute; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; background: #1c1e25; border: 1px solid rgba(255, 255, 255, .12); box-shadow: 0 20px 60px rgba(0, 0, 0, .45); }
+.win { position: absolute; display: flex; flex-direction: column; border-radius: var(--radius); overflow: hidden; background: rgba(24, 26, 33, 0.94); border: 1px solid var(--line); box-shadow: var(--shadow); }
 .win.docked { border-radius: 0; }
 .win:not(.active) { box-shadow: 0 10px 30px rgba(0, 0, 0, .3); }
 .win-title { display: flex; align-items: center; gap: 10px; height: 44px; padding-left: 14px; background: rgba(255, 255, 255, .05); flex: none; }

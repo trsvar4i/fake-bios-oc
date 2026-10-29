@@ -255,6 +255,9 @@
 .post-bottom { position: absolute; left: 60px; bottom: 50px; display: grid; gap: 6px; }
 .post-bottom span:hover, .boot-actions span:hover { color: #fff; }
 .post-bottom b, .boot-actions b { color: #fff; }
+/* тихая загрузка ОС: логотип плавно гаснет */
+.boot-quiet .post-logo { animation: quiet-out 1.3s ease-in forwards; }
+@keyframes quiet-out { 0%, 30% { opacity: 1; } 100% { opacity: 0; filter: blur(6px); } }
 .post-msg { position: absolute; right: 60px; bottom: 50px; color: #fff; }
 
 .bootmenu { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 900px; background: #0a0a0a; border: 2px solid #9a9a9a; padding: 0 0 18px; }

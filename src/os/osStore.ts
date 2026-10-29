@@ -24,11 +24,13 @@ export interface Prefs {
   wallpaper: string;
   notes: string;
   userName: string;
+  /** отпечаток настроек оборудования при прошлой загрузке; "" — система ещё ни разу не запускалась */
+  lastHardware: string;
 }
 
 // ---------- настройки пользователя (переживают перезагрузку) ----------
 const OS_KEY = "kestrel.os";
-const DEFAULT_PREFS: Prefs = { wallpaper: "aurora", notes: "", userName: "User" };
+const DEFAULT_PREFS: Prefs = { wallpaper: "aurora", notes: "", userName: "User", lastHardware: "" };
 
 function loadPrefs(): Prefs {
   try {

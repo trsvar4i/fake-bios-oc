@@ -1,23 +1,77 @@
 import { useEffect, useState } from "react";
 import { useStore, useLang } from "../machine/store";
+import type { Config } from "../machine/params";
 import { useOs } from "./osStore";
 import { playOs } from "./power";
 import { OsLogo } from "./AppIcon";
 import { useNow } from "./util";
 
-/** Логотип и спиннер. Чем быстрее процессор, тем быстрее загрузка. Нестабильный разгон роняет систему. */
+// Настройки BIOS, которые ОС «замечает» при загрузке.
+const HW_KEYS = ["virtualization", "hdAudio", "lanController", "usbStorage", "xmp", "cpuRatio", "smt", "secureBoot", "ftpm", "sataMode"];
+const fingerprint = (c: Config) => HW_KEYS.map((k) => `${k}=${JSON.stringify(c[k])}`).join(";");
+
+/** Дружелюбные статусы вместо логов: при первом запуске и после изменений в BIOS. */
+function bootStatuses(c: Config, last: string, t: (en: string, ru: string) => string): string[] {
+  if (!last) {
+    return [
+      t("Preparing your workspace…", "Готовим рабочее пространство…"),
+      t("Checking devices…", "Проверяем устройства…"),
+      t("Setting up sound and network…", "Настраиваем звук и сеть…"),
+      t("Almost ready…", "Почти готово…"),
+    ];
+  }
+  const prev = Object.fromEntries(last.split(";").map((p) => [p.slice(0, p.indexOf("=")), p.slice(p.indexOf("=") + 1)]));
+  const changed = HW_KEYS.filter((k) => prev[k] !== JSON.stringify(c[k]));
+  if (!changed.length) return [];
+  const msg: Record<string, string> = {
+    virtualization: c.virtualization ? t("Turning on virtualization…", "Включаем виртуализацию…") : t("Turning off virtualization…", "Отключаем виртуализацию…"),
+    hdAudio: c.hdAudio ? t("Setting up sound…", "Настраиваем звук…") : t("Sound card not found — turning sound off…", "Звуковая карта не найдена — отключаем звук…"),
+    lanController: c.lanController ? t("Setting up the network…", "Настраиваем сеть…") : t("Network card not found…", "Сетевая карта не найдена…"),
+    usbStorage: t("Checking USB drives…", "Проверяем USB-накопители…"),
+    xmp: t("Adapting to the new CPU and memory speed…", "Подстраиваемся под новую частоту процессора и памяти…"),
+    cpuRatio: t("Adapting to the new CPU and memory speed…", "Подстраиваемся под новую частоту процессора и памяти…"),
+    smt: t("Adapting to the new CPU and memory speed…", "Подстраиваемся под новую частоту процессора и памяти…"),
+    secureBoot: t("Updating security settings…", "Обновляем параметры безопасности…"),
+    ftpm: t("Updating security settings…", "Обновляем параметры безопасности…"),
+    sataMode: t("Checking disks…", "Проверяем диски…"),
+  };
+  const steps = [...new Set(changed.map((k) => msg[k]))];
+  return [t("Hardware settings have changed…", "Настройки оборудования изменились…"), ...steps, t("Almost ready…", "Почти готово…")];
+}
+
+const STATUS_MS = 1100;
+
+/** Экран старта: логотип со свечением, кольцо загрузки, статусы. Нестабильный разгон роняет систему. */
 export function Splash() {
+  const { t } = useLang();
+  const [statuses] = useState(() => {
+    const s = useStore.getState();
+    return s.osUnstable ? [] : bootStatuses(s.saved, useOs.getState().prefs.lastHardware, t);
+  });
+  const [idx, setIdx] = useState(0);
+
   useEffect(() => {
     const s = useStore.getState();
     const ratio = s.saved.cpuRatio || 45;
-    const ms = Math.max(1500, 3200 - (ratio - 45) * 120 - (s.saved.fastBoot ? 500 : 0));
-    const id = window.setTimeout(() => useOs.getState().setStage(s.osUnstable ? "crash" : "lock"), s.osUnstable ? 1900 : ms);
-    return () => clearTimeout(id);
-  }, []);
+    const base = Math.max(1600, 3200 - (ratio - 45) * 120 - (s.saved.fastBoot ? 500 : 0));
+    const ms = s.osUnstable ? 1900 : Math.max(base, statuses.length * STATUS_MS + 300);
+    const step = window.setInterval(() => setIdx((i) => Math.min(statuses.length - 1, i + 1)), STATUS_MS);
+    const done = window.setTimeout(() => {
+      if (s.osUnstable) return useOs.getState().setStage("crash");
+      useOs.getState().setPref("lastHardware", fingerprint(s.saved));
+      useOs.getState().setStage("lock");
+    }, ms);
+    return () => { clearInterval(step); clearTimeout(done); };
+  }, [statuses]);
+
   return (
-    <div className="os-boot">
-      <OsLogo size={150} />
-      <div className="os-spinner" />
+    <div className="os-boot fade-in">
+      <div className="boot-glow"><OsLogo size={150} /></div>
+      <svg className="ring" viewBox="0 0 48 48" width="48" height="48">
+        <circle cx="24" cy="24" r="20" className="ring-track" />
+        <circle cx="24" cy="24" r="20" className="ring-arc" />
+      </svg>
+      <div className="boot-status">{statuses.length > 0 && <span key={idx}>{statuses[idx]}</span>}</div>
     </div>
   );
 }
@@ -96,8 +150,11 @@ export function Leaving() {
   const kind = useOs((s) => s.leaving);
   const text = kind === "shutdown" ? t("Shutting down", "Завершение работы") : t("Restarting", "Перезагрузка");
   return (
-    <div className="os-boot">
-      <div className="os-spinner" />
+    <div className="os-boot fade-in">
+      <svg className="ring" viewBox="0 0 48 48" width="48" height="48">
+        <circle cx="24" cy="24" r="20" className="ring-track" />
+        <circle cx="24" cy="24" r="20" className="ring-arc" />
+      </svg>
       <div className="os-leaving">{text}</div>
     </div>
   );
