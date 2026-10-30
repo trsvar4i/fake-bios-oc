@@ -2,9 +2,10 @@
 // и то, что учитель делает удалённо: сообщение и блокировка экрана.
 import { useEffect, useState, type FormEvent } from "react";
 import { useLang } from "../machine/store";
-import { GOALS } from "../learn/tasks";
+import { goalTitle } from "../learn/goals";
 import { errorText } from "./api";
-import { attachClass, joinClass, leaveClass, login, logout, register, startAssignment, useClass } from "./store";
+import { attachClass, deleteAccount, joinClass, leaveClass, login, logout, register, startAssignment, useClass } from "./store";
+import { LEVELS } from "../learn/library";
 import "./class.css";
 
 const mmss = (ms: number) => { const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
@@ -67,6 +68,26 @@ function Join() {
   );
 }
 
+/** Удалить аккаунт и все данные о себе — по паролю. */
+function DeleteAccount() {
+  const { t } = useLang();
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const { busy, error, submit } = useSubmit(() => deleteAccount(password));
+  if (!open) return <button className="cl-danger-link" onClick={() => setOpen(true)}>{t("Delete my account…", "Удалить мой аккаунт…")}</button>;
+  return (
+    <form className="cl-delete" onSubmit={submit}>
+      <p>{t("Your account, progress and results will be deleted for good. Your teacher will no longer see you.", "Аккаунт, прогресс и результаты будут удалены навсегда. Учитель перестанет вас видеть.")}</p>
+      <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("Your password", "Ваш пароль")} autoComplete="current-password" />
+      {error && <div className="cl-error">{error}</div>}
+      <div className="cl-row">
+        <button className="cl-primary cl-red" disabled={busy || !password}>{t("Delete for good", "Удалить навсегда")}</button>
+        <button type="button" className="cl-ghost" onClick={() => setOpen(false)}>{t("Cancel", "Отмена")}</button>
+      </div>
+    </form>
+  );
+}
+
 /** «Мой класс»: в программе «Обучение» и в окне с экрана питания. */
 export function ClassPanel({ onStart }: { onStart?: () => void }) {
   const { t, lang } = useLang();
@@ -107,7 +128,7 @@ export function ClassPanel({ onStart }: { onStart?: () => void }) {
         <div className="cl-avatar">{s.me.name.slice(0, 1).toUpperCase()}</div>
         <div>
           <b>{s.me.name}</b>
-          <span>{s.teacher ? t(`Class of ${s.teacher.name}`, `Класс: ${s.teacher.name}`) : t("No class", "Без класса")} · {s.me.login}</span>
+          <span>{s.teacher ? `${s.klass?.name ?? ""} · ${s.teacher.name}` : t("No class", "Без класса")} · {s.me.login}</span>
         </div>
         <button className="cl-ghost" onClick={() => void logout()}>{t("Sign out", "Выйти")}</button>
       </div>
@@ -119,12 +140,12 @@ export function ClassPanel({ onStart }: { onStart?: () => void }) {
             {s.assignments.map((a) => (
               <div key={a.id} className={"cl-task" + (a.done_ms !== null ? " done" : "") + (s.active?.id === a.id ? " active" : "")}>
                 <div className="cl-task-info">
-                  <b>{a.title}</b>
+                  <b>{a.level && <i className={`cl-lvl l${a.level}`}>{LEVELS[a.level as 1 | 2 | 3][lang]}</i>}{a.title}</b>
                   {a.descr && <span>{a.descr}</span>}
-                  <small>{GOALS[a.goal]?.title[lang]}</small>
+                  <small>{goalTitle(a.goal, lang)}{a.minutes ? ` · ${t(`${a.minutes} min`, `${a.minutes} мин`)}` : ""}</small>
                 </div>
                 {a.done_ms !== null && <div className="cl-done">✓ {mmss(a.done_ms)}</div>}
-                <button className="cl-primary" onClick={() => { startAssignment(a); onStart?.(); }}>
+                <button className="cl-primary" onClick={() => { startAssignment(a); onStart?.(); }} disabled={a.done_ms === null && !!a.minutes && a.elapsed_ms !== null && a.elapsed_ms > a.minutes * 60000}>
                   {s.active?.id === a.id ? t("Restart", "Заново") : a.done_ms !== null ? t("Again", "Ещё раз") : t("Start", "Начать")}
                 </button>
               </div>
@@ -133,6 +154,7 @@ export function ClassPanel({ onStart }: { onStart?: () => void }) {
           <button className="cl-ghost cl-leave" onClick={() => { if (confirm(t("Leave the class?", "Выйти из класса?"))) void leaveClass(); }}>{t("Leave class", "Выйти из класса")}</button>
         </>
       )}
+      <DeleteAccount />
     </div>
   );
 }

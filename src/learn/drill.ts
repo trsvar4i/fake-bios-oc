@@ -2,7 +2,8 @@
 // клиента, сам ищет причину в BIOS и чинит. Очки — за сложность и скорость, подсказки стоят очков.
 import { l, type L } from "../machine/i18n";
 import type { Config } from "../machine/params";
-import { GOALS } from "./tasks";
+import { goalDone } from "./goals";
+import type { Ctx } from "./lessons";
 
 export interface DrillFault {
   id: string;
@@ -13,7 +14,7 @@ export interface DrillFault {
   /** жалоба клиента: симптом, без причины */
   symptom: L;
   cfg: Config;
-  /** цель из GOALS */
+  /** цель (src/learn/goals.ts) */
   goal: string;
   /** дополнительное условие клиента (например, «разгон не трогать») */
   keep?: { text: L; ok: (saved: Config) => boolean };
@@ -113,8 +114,8 @@ export function drillPoints(f: DrillFault, ms: number, hints: number): number {
 }
 
 /** Починено ли: цель достигнута и условие клиента соблюдено. */
-export function drillSolved(f: DrillFault, ctx: Parameters<(typeof GOALS)[string]["done"]>[0], ev?: string): boolean {
-  return !!GOALS[f.goal]?.done(ctx, ev) && (f.keep?.ok(ctx.saved) ?? true);
+export function drillSolved(f: DrillFault, ctx: Ctx, ev?: string): boolean {
+  return goalDone(f.goal, ctx.saved, ev) && (f.keep?.ok(ctx.saved) ?? true);
 }
 
 /** Смена: 2 лёгкие, 2 средние, 1 сложная, без повторов, от простого к сложному. */

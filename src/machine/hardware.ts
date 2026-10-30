@@ -1,5 +1,4 @@
-// Фейковое железо. Только чтение.
-import { unlock } from "./quests";
+// Фейковое железо. Только чтение. Без зависимостей: модуль используется и сервером класса (api/).
 
 const FW_KEY = "kestrel.fw";
 /** Доступное обновление прошивки (ставится из «Системных настроек» ОС). */
@@ -12,7 +11,6 @@ function firmware(): { bios: string; buildDate: string } {
 /** Записать новую прошивку (её увидят POST, Setup и ОС после перезагрузки). */
 export function flashFirmware(v: { bios: string; buildDate: string }) {
   try { localStorage.setItem(FW_KEY, JSON.stringify(v)); } catch { /* хранилище недоступно */ }
-  unlock("flash");
 }
 
 export const HW = {

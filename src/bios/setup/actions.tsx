@@ -237,6 +237,7 @@ function runFlash() {
       return;
     }
     flashFirmware(FW_LATEST);
+    unlock("flash");
     st().openDialog({
       title: "Kestrel Instant Flash",
       body: <p className="ok">{tr(`Update complete: ${FW_LATEST.bios}. The system will now restart.`, `Обновление завершено: ${FW_LATEST.bios}. Система перезагрузится.`)}</p>,

@@ -1,7 +1,7 @@
-import { l, type L } from "./i18n";
-import { DEVICES, HW, STORAGE, type DeviceId } from "./hardware";
-import type { Config } from "./params";
-import { bclkOf, cpuGhz, equilibrium, memOf, stability } from "./sensors";
+import { l, type L } from "./i18n.js";
+import { DEVICES, HW, STORAGE, type DeviceId } from "./hardware.js";
+import type { Config } from "./params.js";
+import { bclkOf, cpuGhz, equilibrium, memOf, stability } from "./sensors.js";
 
 export interface BootLine { text: string; cls?: "err" | "hl" }
 export interface BootFinal {

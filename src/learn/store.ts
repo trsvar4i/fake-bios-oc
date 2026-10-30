@@ -6,7 +6,8 @@ import { defaults, type Config } from "../machine/params";
 import { onEvent } from "../machine/events";
 import { useOs } from "../os/osStore";
 import { lessonOf, type Ctx } from "./lessons";
-import { GOALS, completionCode, type Task } from "./tasks";
+import { completionCode, type Task } from "./tasks";
+import { goalDone } from "./goals";
 import { drillFault, drillPoints, drillSolved, newShift } from "./drill";
 
 const KEY = "kestrel.lessons";
@@ -180,7 +181,7 @@ export function check(ev?: string) {
     return;
   }
   if (s.task && !s.code) {
-    if (GOALS[s.task.g]?.done(ctx(), ev)) useLearn.setState({ code: completionCode(s.task, s.student) });
+    if (goalDone(s.task.g, ctx().saved, ev)) useLearn.setState({ code: completionCode(s.task, s.student) });
     return;
   }
   const lesson = lessonOf(s.lesson);

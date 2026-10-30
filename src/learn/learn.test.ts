@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { useStore } from "../machine/store";
 import { emitEvent } from "../machine/events";
 import { LESSONS } from "./lessons";
-import { FAULTS, GOALS, completionCode, parseTask, taskLink, verifyCode, type Task } from "./tasks";
+import { goalValid } from "./goals";
+import { FAULTS, completionCode, parseTask, taskLink, verifyCode, type Task } from "./tasks";
 import { attachLearning, drillGiveUp, drillHint, drillNext, leave, startDrill, startLesson, useLearn } from "./store";
 import { DRILL, SHIFT, drillFault, drillPoints, drillSolved, newShift } from "./drill";
 import { defaults, type Config } from "../machine/params";
@@ -38,7 +39,7 @@ describe("ссылка на задание", () => {
   });
   it("все готовые поломки проходят проверку и имеют цель", () => {
     for (const f of FAULTS) {
-      expect(GOALS[f.goal]).toBeTruthy();
+      expect(goalValid(f.goal)).toBe(true);
       expect(parseTask(taskLink({ t: "x", d: "", g: f.goal, c: f.cfg, n: "n" }))!.c).toEqual(f.cfg);
     }
   });
@@ -174,7 +175,8 @@ describe("случайные поломки", () => {
         expect(useLearn.getState().drill!.solved).toBeNull();
         // «чиним» напрямую: заводские настройки + то, что клиент просил сохранить
         const keep: Config = f.id === "oc" || f.id === "oc-mute" ? { cpuRatio: 50 } : f.id === "memory" ? { xmp: "Profile 2" } : {};
-        useStore.setState({ saved: pc({ ...keep, virtualization: true }) });
+        // для флешки нужен ещё и выключенный Secure Boot — цель проверяет настройки, а не только событие
+        useStore.setState({ saved: pc({ ...keep, virtualization: true, ...(f.goal === "linux" ? { secureBoot: false } : {}) }) });
         emitEvent(f.goal === "vm" ? "vm" : f.goal === "linux" ? "linux" : "boot");
         expect(useLearn.getState().drill!.solved, f.id).toMatchObject({ gaveUp: false });
       }

@@ -299,6 +299,7 @@ function FirmwareFlash() {
   useEffect(() => {
     if (pct < 100) return;
     flashFirmware(FW_LATEST);
+    unlock("flash");
     const id = window.setTimeout(() => useStore.getState().restart(), 900);
     return () => clearTimeout(id);
   }, [pct]);

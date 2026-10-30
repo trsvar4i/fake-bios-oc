@@ -1,5 +1,5 @@
-import { FAN_PRESETS, HW, XMP, type Curve } from "./hardware";
-import type { Config } from "./params";
+import { FAN_PRESETS, HW, XMP, type Curve } from "./hardware.js";
+import type { Config } from "./params.js";
 
 export const activeCurve = (c: Config): Curve =>
   c.fanProfile === "Custom" ? c.fanCurve : FAN_PRESETS[c.fanProfile];

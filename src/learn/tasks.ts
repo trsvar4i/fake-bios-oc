@@ -2,9 +2,10 @@
 // Ученик чинит, а при достижении цели получает код выполнения. Код зависит от задания и имени ученика,
 // поэтому преподаватель проверяет его у себя (вкладка «Преподавателю» в программе «Обучение»).
 import { l, type L } from "../machine/i18n";
-import { PARAMS, defaults, type Config } from "../machine/params";
-import { DEVICE_IDS } from "../machine/hardware";
-import type { Ctx } from "./lessons";
+import type { Config } from "../machine/params";
+import { cleanCfg, goalValid } from "./goals";
+
+export { cleanCfg };
 
 export interface Task {
   /** заголовок и пояснение от преподавателя */
@@ -17,19 +18,6 @@ export interface Task {
   /** случайная соль: у каждого задания свои коды */
   n: string;
 }
-
-export const GOALS: Record<string, { title: L; done: (c: Ctx, ev?: string) => boolean }> = {
-  boot: { title: l("Boot to the desktop", "Загрузиться до рабочего стола"), done: (_, ev) => ev === "boot" },
-  online: { title: l("Boot to the desktop with the network working", "Загрузиться до рабочего стола с работающей сетью"),
-    done: (c, ev) => ev === "boot" && !!c.saved.lanController },
-  sound: { title: l("Boot to the desktop with sound working", "Загрузиться до рабочего стола со звуком"),
-    done: (c, ev) => ev === "boot" && !!c.saved.hdAudio },
-  safeboot: { title: l("Boot to the desktop with Secure Boot on", "Загрузиться до рабочего стола с включённым Secure Boot"),
-    done: (c, ev) => ev === "boot" && !!c.saved.secureBoot && !c.saved.csm },
-  linux: { title: l("Boot Live Linux from the USB stick", "Загрузить Live Linux с флешки"), done: (_, ev) => ev === "linux" },
-  vm: { title: l("Start a guest system in Kestrel VM", "Запустить гостевую систему в Kestrel VM"), done: (_, ev) => ev === "vm" },
-  oc5: { title: l("Run at 5 GHz and reach the desktop without a crash", "Работать на 5 ГГц и дойти до рабочего стола без сбоя"), done: (_, ev) => ev === "oc5" },
-};
 
 /** Готовые неисправности для заданий. */
 export const FAULTS: { id: string; title: L; desc: L; cfg: Config; goal: string }[] = [
@@ -68,30 +56,13 @@ export function taskLink(task: Task): string {
   return `${location.origin}${location.pathname}#task=${b64(JSON.stringify(task))}`;
 }
 
-/** Оставить только допустимые настройки BIOS (без пароля и языка) — для ссылок и заданий с сервера. */
-export function cleanCfg(raw: unknown): Config {
-  const d = defaults();
-  const c: Config = {};
-  if (!raw || typeof raw !== "object") return c;
-  for (const [k, v] of Object.entries(raw)) {
-    if (!(k in PARAMS) || k === "setupPassword" || k === "language") continue;
-    if (Array.isArray(d[k]) !== Array.isArray(v) || (!Array.isArray(v) && typeof d[k] !== typeof v)) continue;
-    const p = PARAMS[k];
-    if (p.type === "select" && !p.options!.includes(v as string)) continue;
-    if (p.type === "number" && (typeof v !== "number" || v < p.min! || v > p.max!)) continue;
-    if (k === "bootOrder" && !((v as string[]).length === DEVICE_IDS.length && DEVICE_IDS.every((x) => (v as string[]).includes(x)))) continue;
-    c[k] = v;
-  }
-  return c;
-}
-
 /** Разобрать задание из адреса или вставленной ссылки; настройки проверяются как у #cfg. */
 export function parseTask(text: string): Task | null {
   const m = text.match(/task=([\w-]+)/);
   if (!m) return null;
   try {
     const raw = JSON.parse(unb64(m[1]));
-    if (typeof raw.t !== "string" || typeof raw.g !== "string" || !GOALS[raw.g] || typeof raw.n !== "string") return null;
+    if (typeof raw.t !== "string" || typeof raw.g !== "string" || !goalValid(raw.g) || typeof raw.n !== "string") return null;
     return { t: raw.t.slice(0, 120), d: String(raw.d ?? "").slice(0, 600), g: raw.g, c: cleanCfg(raw.c), n: raw.n.slice(0, 16) };
   } catch {
     return null;

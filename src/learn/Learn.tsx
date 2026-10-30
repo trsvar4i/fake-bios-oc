@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { useLang } from "../machine/store";
 import type { Lang } from "../machine/i18n";
 import { LESSONS, lessonOf } from "./lessons";
-import { GOALS, parseTask, type Task } from "./tasks";
+import { parseTask, type Task } from "./tasks";
+import { goalTitle } from "./goals";
 import { attachLearning, drillGiveUp, drillHint, drillNext, leave, skipStep, startDrill, startLesson, startTask, useLearn, type Drill } from "./store";
 import { DRILL, HINT_COST, SHIFT, drillFault } from "./drill";
 import "./learn.css";
 import { ClassPanel } from "../class/ClassUi";
+import { timeLeft, useClass } from "../class/store";
 
 const LEVEL = { 1: ["Beginner", "Новичок"], 2: ["Intermediate", "Средний"], 3: ["Advanced", "Продвинутый"] } as const;
 
@@ -66,6 +68,7 @@ function LessonCard() {
   const drag = useRef<{ px: number; py: number; x: number; y: number; k: number } | null>(null);
   useEffect(() => setHint(false), [s.step, s.lesson]);
 
+  const cls = useClass();
   const lesson = lessonOf(s.lesson);
   const finished = lessonOf(s.finished);
   if (!lesson && !finished && !s.task && !s.drill) return null;
@@ -105,12 +108,20 @@ function LessonCard() {
   } else if (s.task) {
     kind = t("Task from your teacher", "Задание учителя");
     title = s.task.t;
-    const goal = GOALS[s.task.g];
     const fromClass = s.task.n.startsWith("class-");
+    const verdict = fromClass && cls.verdict?.id === Number(s.task.n.slice(6)) ? cls.verdict : null;
+    const VERDICT: Record<string, [string, string]> = {
+      not_solved: ["The server checked your BIOS settings: the task is not solved yet.", "Сервер проверил настройки BIOS: задача пока не решена."],
+      time_up: ["Time is up — the result was not counted.", "Время вышло — результат не засчитан."],
+      too_fast: ["Too fast to be real — start the task again.", "Слишком быстро для настоящего решения — начните задание заново."],
+      no_attempt: ["The task was not started on the server — start it again from “My class”.", "Задание не начато на сервере — начните его заново в «Моём классе»."],
+    };
     body = s.code && fromClass ? (
       <>
-        <div className="lc-done-big">{t("Done!", "Готово!")}</div>
-        <div className="lc-small">{t("The result has been sent to your teacher.", "Результат отправлен учителю.")}</div>
+        <div className="lc-done-big">{verdict && !verdict.ok ? t("Not counted", "Не засчитано") : t("Done!", "Готово!")}</div>
+        <div className="lc-small">{!verdict ? t("Checking on the server…", "Проверяем на сервере…")
+          : verdict.ok ? t("Checked and counted — your teacher sees the result.", "Проверено и засчитано — учитель видит результат.")
+          : t(...(VERDICT[verdict.code] ?? ["Not counted.", "Не засчитано."]))}</div>
         <div className="lc-actions">
           {s.backup && <button onClick={() => leave(true)}>{t("Restore my BIOS settings", "Вернуть мои настройки BIOS")}</button>}
           <button onClick={() => leave(false)}>{t("Close", "Закрыть")}</button>
@@ -131,7 +142,8 @@ function LessonCard() {
     ) : (
       <>
         {s.task.d && <p className="lc-text">{s.task.d}</p>}
-        <div className="lc-goal"><span>{t("Goal", "Цель")}</span>{goal.title[lang]}</div>
+        <div className="lc-goal"><span>{t("Goal", "Цель")}</span>{goalTitle(s.task.g, lang)}</div>
+        {fromClass && cls.active?.minutes && <Countdown />}
         <div className="lc-small">{fromClass ? t("The check is automatic; your teacher sees the result.", "Проверка автоматическая — учитель увидит результат.")
           : t("The check is automatic. When the goal is reached you get a code for your teacher.", "Проверка автоматическая. Когда цель будет достигнута, появится код для преподавателя.")}</div>
         <div className="lc-actions"><button onClick={() => leave(true)}>{t("Give up and restore BIOS", "Сдаться и вернуть BIOS")}</button></div>
@@ -171,6 +183,21 @@ function LessonCard() {
 const pts = (n: number) => { const a = n % 10, b = n % 100; return `${n} ${a === 1 && b !== 11 ? "очко" : a >= 2 && a <= 4 && (b < 12 || b > 14) ? "очка" : "очков"}`; };
 
 const mmss = (ms: number) => { const sec = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`; };
+
+/** Сколько осталось на задание учителя (по часам сервера). */
+function Countdown() {
+  const { t } = useLang();
+  const active = useClass((s) => s.active);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const id = window.setInterval(() => setNow(Date.now()), 500); return () => clearInterval(id); }, []);
+  const left = timeLeft(active, now);
+  if (left === null) return null;
+  return (
+    <div className={"lc-timer" + (left <= 0 ? " over" : left < 60000 ? " soon" : "")}>
+      {left <= 0 ? t("Time is up", "Время вышло") : `${t("Time left", "Осталось")} ${mmss(left)}`}
+    </div>
+  );
+}
 
 /** Секундомер текущей поломки. */
 function Clock({ since }: { since: number }) {
@@ -232,7 +259,7 @@ function drillCard(d: Drill, best: number, t: T, lang: Lang): [string, string, J
         <span className="dr-score">{t(`${score} pts`, `${score} очк.`)}</span>
       </div>
       <p className="lc-text" key={f.id}>{f.symptom[lang]}</p>
-      <div className="lc-goal"><span>{t("Done when", "Готово, когда")}</span>{GOALS[f.goal].title[lang]}{f.keep && <em>{f.keep.text[lang]}</em>}</div>
+      <div className="lc-goal"><span>{t("Done when", "Готово, когда")}</span>{goalTitle(f.goal, lang)}{f.keep && <em>{f.keep.text[lang]}</em>}</div>
       {f.hints.slice(0, d.hints).map((h, i) => <p className="lc-hint" key={i}>{h[lang]}</p>)}
       <div className="lc-actions">
         {d.hints < 2 && <button onClick={drillHint}>{t(`Hint (−${HINT_COST})`, `Подсказка (−${HINT_COST})`)}</button>}
@@ -284,7 +311,7 @@ function TaskOffer() {
         <div className="lc-kind">{t("Task from your teacher", "Задание преподавателя")}</div>
         <h2>{task.t}</h2>
         {task.d && <p className="lc-text">{task.d}</p>}
-        <div className="lc-goal"><span>{t("Goal", "Цель")}</span>{GOALS[task.g].title[lang]}</div>
+        <div className="lc-goal"><span>{t("Goal", "Цель")}</span>{goalTitle(task.g, lang)}</div>
         <p className="lc-small">{t("The PC will be set up for the task. Your current BIOS settings are saved and can be restored afterwards.",
           "Компьютер будет настроен под задание. Ваши текущие настройки BIOS сохранятся, потом их можно вернуть.")}</p>
         <form onSubmit={(e) => { e.preventDefault(); if (name.trim()) { startTask(task, name); close(); } }}>

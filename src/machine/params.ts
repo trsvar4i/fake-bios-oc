@@ -1,5 +1,5 @@
-import { l, type L, type Lang } from "./i18n";
-import { DEVICES, FAN_PRESETS, XMP, type Curve, type DeviceId } from "./hardware";
+import { l, type L, type Lang } from "./i18n.js";
+import { DEVICES, FAN_PRESETS, XMP, type Curve, type DeviceId } from "./hardware.js";
 
 export type Config = Record<string, any>;
 

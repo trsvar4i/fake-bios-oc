@@ -74,3 +74,51 @@ CREATE TABLE IF NOT EXISTS login_fails (
   at    timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS login_fails_login ON login_fails(login, at);
+
+-- ——— v2: несколько классов у учителя, попытки с серверным временем, защита от массовой регистрации ———
+
+CREATE TABLE IF NOT EXISTS classes (
+  id         serial PRIMARY KEY,
+  teacher_id int NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name       text NOT NULL,
+  code       text NOT NULL UNIQUE,
+  -- набор открыт: можно зарегистрироваться или войти по коду
+  open       boolean NOT NULL DEFAULT true,
+  -- когда учитель последний раз смотрел кабинет этого класса: ученики синхронизируются чаще
+  watched_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS classes_teacher ON classes(teacher_id);
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS class_id int REFERENCES classes(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS users_class ON users(class_id);
+
+-- перенос v1: у каждого учителя был один код — он становится классом «Мой класс»
+INSERT INTO classes (teacher_id, name, code)
+  SELECT u.id, 'Мой класс', u.class_code FROM users u
+  WHERE u.role = 'teacher' AND u.class_code IS NOT NULL AND NOT EXISTS (SELECT 1 FROM classes c WHERE c.teacher_id = u.id);
+UPDATE users s SET class_id = c.id FROM classes c
+  WHERE s.role = 'student' AND s.class_id IS NULL AND s.teacher_id = c.teacher_id;
+
+ALTER TABLE assignments ADD COLUMN IF NOT EXISTS class_id int REFERENCES classes(id) ON DELETE CASCADE;
+ALTER TABLE assignments ADD COLUMN IF NOT EXISTS minutes int;
+ALTER TABLE assignments ADD COLUMN IF NOT EXISTS level int;
+UPDATE assignments a SET class_id = (SELECT min(c.id) FROM classes c WHERE c.teacher_id = a.teacher_id) WHERE a.class_id IS NULL;
+
+-- попытка: когда ученик начал задание (время считает сервер)
+CREATE TABLE IF NOT EXISTS attempts (
+  assignment_id int NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
+  student_id    int NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  started_at    timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (assignment_id, student_id)
+);
+
+-- регистрации по IP — не больше нескольких в час с одного адреса
+CREATE TABLE IF NOT EXISTS reg_log (
+  ip text NOT NULL,
+  at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS reg_log_ip ON reg_log(ip, at);
+
+ALTER TABLE login_fails ADD COLUMN IF NOT EXISTS ip text NOT NULL DEFAULT '';
+CREATE INDEX IF NOT EXISTS login_fails_login_ip ON login_fails(login, ip, at);
