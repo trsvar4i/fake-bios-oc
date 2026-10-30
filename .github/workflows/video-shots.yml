@@ -1,0 +1,26 @@
+# Временный: снимает кадры для промо-видео (ветка video-shots). Удаляется вместе с веткой.
+name: Video shots
+on:
+  push:
+    branches: [video-shots]
+permissions:
+  contents: write
+jobs:
+  shots:
+    if: "!contains(github.event.head_commit.message, '[shots]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm i --no-save playwright@1 && npx playwright install --with-deps chromium
+      - run: |
+          sudo apt-get install -y fonts-noto-color-emoji >/dev/null 2>&1 || true
+          npx vite --port 5173 --strictPort > vite.log 2>&1 &
+          npx wait-on -t 60000 http://localhost:5173 || sleep 15
+          node .video/capture.mjs || true
+          cp vite.log .video/shots/ || true
+      - run: |
+          git config user.name "github-actions" && git config user.email "actions@github.com"
+          git add -f .video/shots && git commit -m "[shots] screenshots" && git push
