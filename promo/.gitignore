@@ -1,0 +1,5 @@
+node_modules/
+out/*.png
+public/vo/test.mp3
+out/check-*.png
+out/f*.png

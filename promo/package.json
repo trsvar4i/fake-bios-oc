@@ -1,0 +1,19 @@
+{
+  "name": "kestrel-promo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "voice": "python voice.py",
+    "shots": "node shots.mjs",
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts Promo out/kestrel-pc-promo.mp4 --codec h264 --crf 18 --browser-executable=\"C:/Program Files/Google/Chrome/Application/chrome.exe\""
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.528",
+    "@remotion/google-fonts": "^4.0.528",
+    "puppeteer-core": "24.10.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.528"
+  }
+}
