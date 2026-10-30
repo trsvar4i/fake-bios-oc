@@ -11,6 +11,9 @@ html:has(.portal), body:has(.portal) { overflow: auto; height: auto; min-height:
 .pt-brand svg { width: 22px; height: 22px; fill: var(--pt-acc); }
 .pt-title { color: var(--pt-muted); font-weight: 600; }
 .pt-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.pt-lang { display: flex; padding: 3px; border-radius: 10px; background: var(--pt-line); }
+.pt-lang button { height: 28px; padding: 0 9px; border-radius: 7px; font-size: 12px; font-weight: 800; color: var(--pt-muted); cursor: pointer; }
+.pt-lang button.on { background: var(--pt-card); color: var(--pt-text); box-shadow: 0 1px 3px rgba(0, 0, 0, .15); }
 .pt-main { max-width: 1240px; margin: 0 auto; padding: 24px 24px 60px; display: flex; flex-direction: column; gap: 22px; }
 
 .pt-card { background: var(--pt-card); border-radius: 18px; padding: 20px 22px; box-shadow: 0 0 0 1px var(--pt-line), 0 8px 24px rgba(0, 0, 0, .04); }

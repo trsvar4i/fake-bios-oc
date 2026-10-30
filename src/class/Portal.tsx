@@ -1,7 +1,7 @@
 // Отдельные страницы вне симулятора: #teacher — кабинет учителя (класс, живые экраны учеников, удалённое
 // управление, задания и результаты), #admin — владелец сайта создаёт учителей и задаёт лимит учеников.
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { useLang } from "../machine/store";
+import { useLang, useStore } from "../machine/store";
 import { LESSONS, lessonOf } from "../learn/lessons";
 import { FAULTS, GOALS } from "../learn/tasks";
 import { DRILL } from "../learn/drill";
@@ -25,9 +25,21 @@ function Shell({ title, right, children }: { title: string; right?: ReactNode; c
           Kestrel PC
         </a>
         <span className="pt-title">{title}</span>
-        <div className="pt-right">{right}</div>
+        <div className="pt-right">{right}<LangSwitch /></div>
       </header>
       <main className="pt-main">{children}</main>
+    </div>
+  );
+}
+
+/** RU / EN — тот же язык, что в BIOS и ОС симулятора. */
+function LangSwitch() {
+  const { lang } = useLang();
+  return (
+    <div className="pt-lang" role="group" aria-label="Language">
+      {(["ru", "en"] as const).map((x) => (
+        <button key={x} className={lang === x ? "on" : ""} onClick={() => useStore.getState().setLanguage(x === "ru" ? "Русский" : "English")}>{x.toUpperCase()}</button>
+      ))}
     </div>
   );
 }

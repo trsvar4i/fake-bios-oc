@@ -17,6 +17,9 @@ beforeEach(() => {
   useFs.setState({ nodes: { ...initialFs } });
   useOs.setState({ prefs: { ...initialPrefs, installed: [] }, windows: [], notices: [] });
   Element.prototype.scrollIntoView = () => {};
+  // тексты в тестах — английские (по умолчанию теперь русский)
+  const st = useStore.getState();
+  useStore.setState({ saved: { ...st.saved, language: "English" }, pending: { ...st.pending, language: "English" } });
 });
 afterEach(cleanup);
 
