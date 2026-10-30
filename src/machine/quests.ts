@@ -2,6 +2,7 @@
 // Прогресс хранится в браузере (kestrel.quests); при получении показывается тост поверх любого экрана.
 import { create } from "zustand";
 import { l, type L } from "./i18n";
+import { emitEvent } from "./events";
 
 export interface Quest { id: string; title: L; desc: L; hint: L; glyph: string }
 
@@ -65,6 +66,8 @@ export const onQuest = (fn: Listener) => { listeners.add(fn); return () => { lis
 let freshTimer = 0;
 /** Отметить испытание выполненным (повторно — ничего не происходит). */
 export function unlock(id: string) {
+  // событие уходит всегда — уроки и задания преподавателя ловят его и повторно
+  emitEvent(id);
   const quest = QUESTS.find((x) => x.id === id);
   const s = useQuests.getState();
   if (!quest || s.done[id]) return;

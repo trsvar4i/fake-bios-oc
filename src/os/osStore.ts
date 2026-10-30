@@ -92,7 +92,7 @@ export interface Prefs {
 }
 
 // ---------- настройки пользователя (переживают перезагрузку) ----------
-export const DEFAULT_DOCK = ["finder", "browser", "appstore", "notes", "reminders", "calendar", "calculator", "clock", "terminal", "taskmgr", "settings"];
+export const DEFAULT_DOCK = ["finder", "browser", "learn", "appstore", "notes", "reminders", "calendar", "calculator", "clock", "terminal", "taskmgr", "settings"];
 const DEFAULT_PREFS: Prefs = {
   wallpaper: "aurora", notes: "", userName: "User", password: "", passwordHint: "", lastHardware: "",
   dock: DEFAULT_DOCK,

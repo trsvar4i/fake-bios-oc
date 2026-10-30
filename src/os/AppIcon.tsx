@@ -25,6 +25,7 @@ const ICONS: Record<string, Icon> = {
   music: { c: ["#f472b6", "#be185d"], g: '<path d="M12.5 22.5V9l12-3v13"/><circle cx="9.5" cy="22.5" r="3" fill="#fff"/><circle cx="21.5" cy="19" r="3" fill="#fff"/>' },
   settings: { c: ["#a1a1aa", "#3f3f46"], g: '<circle cx="16" cy="16" r="4"/><path d="M16 4.5v3.2M16 24.3v3.2M4.5 16h3.2M24.3 16h3.2M7.9 7.9l2.2 2.2M21.9 21.9l2.2 2.2M7.9 24.1l2.2-2.2M21.9 10.1l2.2-2.2"/><circle cx="16" cy="16" r="8.2" stroke-dasharray="3.2 3.2"/>' },
   browser: { c: ["#2dd4bf", "#0f766e"], g: '<circle cx="16" cy="16" r="11"/><path d="M5 16h22M16 5c3.5 3 4.8 7 4.8 11S19.5 24 16 27c-3.5-3-4.8-7-4.8-11S12.5 8 16 5z"/>' },
+  learn: { c: ["#38bdf8", "#1d4ed8"], g: '<path d="M4 12l12-6 12 6-12 6z"/><path d="M9 14.5v6c0 2 3.2 3.8 7 3.8s7-1.8 7-3.8v-6M28 12v7"/>' },
   quests: { c: ["#facc15", "#a16207"], g: '<path d="M10 5h12v6a6 6 0 0 1-12 0z"/><path d="M10 7H6.5a3.5 3.5 0 0 0 3.8 5M22 7h3.5a3.5 3.5 0 0 1-3.8 5M16 17v4.5M11 27h10M12.5 27l1-5.5h5l1 5.5"/>' },
   // без плитки: папки и документы в «Файлах» и на рабочем столе
   folder: { c: ["", ""], g: '<path d="M3 9a2 2 0 0 1 2-2h7l2.5 2.5H27a2 2 0 0 1 2 2V25a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="#3b82f6" stroke="none"/><path d="M3 12.5h26V25a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="#60a5fa" stroke="none"/><path d="M22 12.5h7v7z" fill="rgba(255,255,255,.18)" stroke="none"/>' },

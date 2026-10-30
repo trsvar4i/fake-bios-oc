@@ -18,6 +18,7 @@ import { Preview } from "./Preview";
 import { Music } from "./Music";
 import { Browser } from "./Browser";
 import { Quests } from "./Quests";
+import { Learn } from "./Learn";
 
 export const APP_COMPONENTS: Record<string, ComponentType<{ winId: number }>> = {
   thispc: ThisPc,
@@ -39,4 +40,5 @@ export const APP_COMPONENTS: Record<string, ComponentType<{ winId: number }>> = 
   music: Music,
   browser: Browser,
   quests: Quests,
+  learn: Learn,
 };

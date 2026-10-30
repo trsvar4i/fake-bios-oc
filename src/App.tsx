@@ -11,6 +11,7 @@ import { firmwareAccent } from "./os/wallpapers";
 import { Tour } from "./Tour";
 import { TouchLayer } from "./Touch";
 import { QuestToast } from "./QuestToast";
+import { Learning } from "./learn/Learn";
 import { parseShared } from "./machine/profiles";
 import { PARAMS, formatValue } from "./machine/params";
 
@@ -89,6 +90,7 @@ export function App() {
       {phase === "off" && <Tour />}
       <Dialog />
       <QuestToast />
+      <Learning />
     </Stage>
   );
 }

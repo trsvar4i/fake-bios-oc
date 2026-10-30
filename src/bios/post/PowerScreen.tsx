@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useStore, useLang } from "../../machine/store";
 import { sound } from "../../machine/audio";
 import { SoundToggle } from "../ui/SoundToggle";
+import { useLearn } from "../../learn/store";
 
 /** ПК выключен. Кнопка питания заодно разблокирует звук в браузере. */
 export function PowerScreen() {
@@ -13,6 +14,8 @@ export function PowerScreen() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // не включать компьютер, пока человек печатает (имя в задании) или выбирает урок
+      if ((e.target as HTMLElement)?.closest?.("input, textarea, .learn-modal") || useLearn.getState().picker) return;
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); press(); }
     };
     window.addEventListener("keydown", onKey);
@@ -27,6 +30,10 @@ export function PowerScreen() {
       <div className="power-label">{t("Press the power button", "Нажмите кнопку питания")}</div>
       <div className="power-note">Enter / Space</div>
       <div className="power-sound"><SoundToggle /></div>
+      <button className="power-learn" onClick={() => useLearn.setState({ picker: true })}>
+        <svg viewBox="0 0 24 24"><path d="M3 8l9-4 9 4-9 4zM7 10v5c0 1.5 2.2 3 5 3s5-1.5 5-3v-5M21 8v6" /></svg>
+        {t("Lessons", "Обучение")}
+      </button>
     </div>
   );
 }

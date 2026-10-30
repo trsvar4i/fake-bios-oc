@@ -41,6 +41,7 @@ export const APP_META: Record<string, AppMeta> = {
   music: { id: "music", title: l("Music", "Музыка"), icon: "music", w: 820, h: 560, single: true, load: 0.04, group: "create",
     store: { desc: l("A built-in synthesizer plays original tracks. Now Playing shows on the Perch.", "Встроенный синтезатор играет свои треки. Что играет — видно на «Насесте»."), size: "6,1 MB" } },
   browser: { id: "browser", title: l("Browser", "Браузер"), icon: "browser", w: 1080, h: 700, load: 0.05, group: "work" },
+  learn: { id: "learn", title: l("Lessons", "Обучение"), icon: "learn", w: 980, h: 700, single: true, group: "work" },
   quests: { id: "quests", title: l("Challenges", "Испытания"), icon: "quests", w: 820, h: 640, single: true, group: "system" },
   thispc: { id: "thispc", title: l("About This PC", "Об этом компьютере"), icon: "pc", w: 620, h: 720, single: true, hidden: true, fixed: true },
 };
