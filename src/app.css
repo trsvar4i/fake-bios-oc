@@ -4,9 +4,11 @@
   --panel: #111114;
   --panel-2: #1a1a1f;
   --line: #2c2c33;
+  /* акцент BIOS: по умолчанию красный, а в работе — цвет обоев рабочего стола (App.tsx → firmwareAccent) */
   --red: #e3242f;
+  --red-rgb: 227, 36, 47;
   --red-dim: #5c0d13;
-  --red-glow: rgba(227, 36, 47, 0.35);
+  --red-glow: rgba(var(--red-rgb), 0.35);
   --text: #d9d9de;
   --muted: #8a8a94;
   --grey: #55555d;

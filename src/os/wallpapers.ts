@@ -52,3 +52,20 @@ export const WALLPAPERS: Record<string, Wallpaper> = {
 };
 
 export const wallpaperOf = (id: string) => WALLPAPERS[id] ?? WALLPAPERS.aurora;
+
+/**
+ * Цвет BIOS под рабочий стол: акцент обоев превращается в переменные, которыми окрашен BIOS
+ * (--red, --red-rgb, --red-dim, --red-glow — имена исторические, цвет теперь любой).
+ */
+export function firmwareAccent(id: string): Record<string, string> {
+  const hex = wallpaperOf(id).accent.replace("#", "");
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  // тёмный оттенок для заливок выделения — как #5c0d13 у прежнего красного
+  const dim = [r, g, b].map((v) => Math.round(v * 0.3)).map((v) => v.toString(16).padStart(2, "0")).join("");
+  return {
+    "--red": `#${hex}`,
+    "--red-rgb": `${r}, ${g}, ${b}`,
+    "--red-dim": `#${dim}`,
+    "--red-glow": `rgba(${r}, ${g}, ${b}, 0.35)`,
+  };
+}

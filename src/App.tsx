@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useStore } from "./machine/store";
 import { Dialog } from "./bios/ui/Dialog";
 import { Setup } from "./bios/setup/Setup";
@@ -6,6 +6,8 @@ import { Post } from "./bios/post/Post";
 import { BootScreen } from "./bios/post/BootScreen";
 import { PowerScreen } from "./bios/post/PowerScreen";
 import { Os } from "./os/Os";
+import { useOs } from "./os/osStore";
+import { firmwareAccent } from "./os/wallpapers";
 import { Tour } from "./Tour";
 import { TouchLayer } from "./Touch";
 import { QuestToast } from "./QuestToast";
@@ -24,8 +26,10 @@ function Stage({ children }: { children: ReactNode }) {
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
   }, []);
+  // BIOS и POST окрашены в акцент обоев рабочего стола текущего пользователя
+  const wallpaper = useOs((s) => s.prefs.wallpaper);
   return (
-    <div className="viewport">
+    <div className="viewport" style={firmwareAccent(wallpaper) as CSSProperties}>
       <div className="stage" style={{ transform: `translate(-50%, -50%) scale(${scale})` }}>
         {children}
       </div>
