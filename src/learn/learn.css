@@ -67,6 +67,26 @@
 .ls-go:active { transform: scale(.96); }
 .ls-note { margin: 6px 2px 0; font-size: 13px; opacity: .6; line-height: 1.4; }
 
+/* тренировка «Случайные поломки» */
+.ls-drill { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; padding: 16px 16px; border-radius: 16px;
+  background: linear-gradient(120deg, rgba(var(--red-rgb), .24), rgba(var(--red-rgb), .06)); box-shadow: inset 0 0 0 1px rgba(var(--red-rgb), .35); }
+.ls-drill.active { box-shadow: inset 0 0 0 2px var(--red); }
+.ls-drill-ico { width: 46px; height: 46px; flex: none; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: var(--red); }
+.ls-drill-ico svg { width: 24px; height: 24px; fill: none; stroke: #fff; stroke-width: 2; stroke-linejoin: round; }
+.ls-drill .ls-title { font-size: 19px; }
+.dr-bar { display: flex; align-items: center; gap: 12px; margin-top: 10px; font-size: 14px; color: var(--lc-text-2); }
+.dr-level { color: var(--red); letter-spacing: 2px; }
+.dr-clock { font-family: "JetBrains Mono", Consolas, monospace; font-size: 18px; font-weight: 700; color: var(--lc-text); font-variant-numeric: tabular-nums; }
+.dr-score { margin-left: auto; font-weight: 700; }
+.lc-goal em { margin-top: 4px; font-style: normal; font-size: 14px; font-weight: 500; color: var(--red); }
+.dr-gain { margin-top: 8px; font-size: 34px; font-weight: 800; color: var(--red); animation: lc-in .5s cubic-bezier(.22, 1, .36, 1) both; }
+.dr-gain small { font-size: 15px; font-weight: 600; color: var(--lc-text-2); }
+.dr-record { margin-top: 8px; font-size: 18px; font-weight: 800; color: var(--red); animation: lc-pulse 1.6s ease-in-out 3; }
+.dr-results { margin: 10px 0 0; padding-left: 22px; font-size: 15px; line-height: 1.4; }
+.dr-results li { margin-bottom: 6px; animation: lc-text-in .4s ease both; }
+.dr-results li span { display: inline-flex; width: calc(100% - 4px); justify-content: space-between; gap: 12px; vertical-align: top; }
+.dr-results li b { flex: none; font-variant-numeric: tabular-nums; }
+.dr-results li.gave b { color: var(--lc-text-2); font-weight: 500; }
 /* окна поверх экрана: выбор урока, задание по ссылке */
 .learn-modal { position: absolute; inset: 0; z-index: 26000; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, .55); backdrop-filter: blur(6px); animation: tour-fade .3s ease both; }
 .learn-sheet { width: 860px; max-height: 900px; overflow: auto; padding: 26px 30px; border-radius: 24px; background: rgba(24, 24, 30, .96);
@@ -87,5 +107,5 @@
 .power-learn svg { width: 20px; height: 20px; fill: none; stroke: var(--red); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 @media (prefers-reduced-motion: reduce) {
-  .lesson-card, .lc-text, .lc-hint, .lc-take li, .lc-code, .learn-sheet, .lc-dots i.now { animation: none; }
+  .lesson-card, .lc-text, .lc-hint, .lc-take li, .lc-code, .learn-sheet, .lc-dots i.now, .dr-gain, .dr-record, .dr-results li { animation: none; }
 }

@@ -4,7 +4,10 @@ import { useStore } from "../machine/store";
 import { emitEvent } from "../machine/events";
 import { LESSONS } from "./lessons";
 import { FAULTS, GOALS, completionCode, parseTask, taskLink, verifyCode, type Task } from "./tasks";
-import { attachLearning, leave, startLesson, useLearn } from "./store";
+import { attachLearning, drillGiveUp, drillHint, drillNext, leave, startDrill, startLesson, useLearn } from "./store";
+import { DRILL, SHIFT, drillFault, drillPoints, drillSolved, newShift } from "./drill";
+import { defaults, type Config } from "../machine/params";
+import { bootScript, deviceAvailable } from "../machine/boot";
 
 const task: Task = { t: "Диск пропал", d: "Почините", g: "boot", c: { sataMode: "RAID" }, n: "abc123" };
 
@@ -92,6 +95,98 @@ describe("уроки", () => {
     useStore.setState({ saved: { ...useStore.getState().saved, lanController: true } });
     emitEvent("boot");
     expect(useLearn.getState().code).toBe(completionCode({ ...task, g: "online" }, "Анна"));
+    off();
+  });
+});
+
+/** Компьютер с заводскими настройками и правками. */
+const pc = (c: Config) => ({ ...defaults(), ...c }) as Config;
+/** Дошёл бы до рабочего стола без сбоя? */
+const boots = (c: Config) => { const f = bootScript(c).final; return f.type === "os" && !f.unstable; };
+const ctxOf = (saved: Config) => ({ phase: "os" as const, mode: "ez" as const, advTab: 0, saved, pending: saved, apps: [] });
+
+describe("случайные поломки", () => {
+  it("каждая поломка действительно ломает компьютер", () => {
+    for (const f of DRILL) {
+      const c = pc(f.cfg);
+      const broken = f.goal === "boot" ? !boots(c)
+        : f.goal === "online" ? !c.lanController
+        : f.goal === "sound" ? !c.hdAudio
+        : f.goal === "safeboot" ? bootScript(c).final.type === "error"
+        : f.goal === "linux" ? !deviceAvailable(c, "USB")
+        : f.goal === "vm" ? !c.virtualization : false;
+      expect(broken, f.id).toBe(true);
+      expect(f.name.ru.length * f.symptom.ru.length * f.cause.ru.length * f.hints[1].ru.length, f.id).toBeGreaterThan(0);
+    }
+  });
+
+  it("починка по подсказке работает и соблюдает условие клиента", () => {
+    const fixes: Record<string, Config> = {
+      raid: { sataMode: "AHCI" }, oc: { cpuVcore: 0 }, memory: { dramVoltage: 0 }, hot: { cpuRatio: 50 }, bclk: { bclk: 0 },
+      "raid-lan": { sataMode: "AHCI", lanController: true }, "oc-mute": { cpuVcore: 0, hdAudio: true },
+      offline: { lanController: true }, mute: { hdAudio: true }, secure: { bootOrder: defaults().bootOrder },
+    };
+    for (const [id, fix] of Object.entries(fixes)) {
+      const f = drillFault(id)!;
+      const c = pc({ ...f.cfg, ...fix });
+      expect(boots(c), id).toBe(true);
+      expect(drillSolved(f, ctxOf(c), "boot"), id).toBe(true);
+    }
+    // сброс разгона «в ноль» не засчитывается, если клиент просил оставить 5 ГГц
+    expect(drillSolved(drillFault("oc")!, ctxOf(pc({})), "boot")).toBe(false);
+    expect(drillSolved(drillFault("memory")!, ctxOf(pc({})), "boot")).toBe(false);
+    expect(drillSolved(drillFault("secure")!, ctxOf(pc({ secureBoot: false })), "boot")).toBe(false);
+  });
+
+  it("смена: 5 разных поломок от простых к сложным", () => {
+    const q = newShift();
+    expect(q).toHaveLength(SHIFT);
+    expect(new Set(q).size).toBe(SHIFT);
+    const levels = q.map((id) => drillFault(id)!.level);
+    expect(levels).toEqual([...levels].sort());
+  });
+
+  it("очки: сложность, скорость, подсказки", () => {
+    const f = drillFault("oc")!;
+    expect(drillPoints(f, 0, 0)).toBe(300);
+    expect(drillPoints(f, 10 * 60_000, 0)).toBe(200);
+    expect(drillPoints(f, 10 * 60_000, 2)).toBe(120);
+    expect(drillPoints(drillFault("raid")!, 10 * 60_000, 2)).toBe(20);
+  });
+
+  it("ход смены: поломка, починка, сдача, итоги и рекорд", () => {
+    const off = attachLearning();
+    useLearn.setState({ drill: null, drillBest: 0, backup: null });
+    useStore.setState({ phase: "off" });
+    const before = useStore.getState().saved.sataMode;
+    startDrill();
+    for (let i = 0; i < SHIFT; i++) {
+      const d = useLearn.getState().drill!;
+      const f = drillFault(d.queue[d.i])!;
+      // поломка применена к машине
+      for (const [k, v] of Object.entries(f.cfg)) expect(useStore.getState().saved[k]).toEqual(v);
+      if (i === 1) {
+        drillHint();
+        drillGiveUp();
+        expect(useLearn.getState().drill!.solved).toMatchObject({ gaveUp: true, points: 0, hints: 1 });
+      } else {
+        emitEvent("nothing");
+        expect(useLearn.getState().drill!.solved).toBeNull();
+        // «чиним» напрямую: заводские настройки + то, что клиент просил сохранить
+        const keep: Config = f.id === "oc" || f.id === "oc-mute" ? { cpuRatio: 50 } : f.id === "memory" ? { xmp: "Profile 2" } : {};
+        useStore.setState({ saved: pc({ ...keep, virtualization: true }) });
+        emitEvent(f.goal === "vm" ? "vm" : f.goal === "linux" ? "linux" : "boot");
+        expect(useLearn.getState().drill!.solved, f.id).toMatchObject({ gaveUp: false });
+      }
+      drillNext();
+    }
+    const d = useLearn.getState().drill!;
+    expect(d.over).toBe(true);
+    expect(d.results).toHaveLength(SHIFT);
+    expect(useLearn.getState().drillBest).toBe(d.results.reduce((a, r) => a + r.points, 0));
+    leave(true);
+    expect(useLearn.getState().drill).toBeNull();
+    expect(useStore.getState().saved.sataMode).toBe(before);
     off();
   });
 });

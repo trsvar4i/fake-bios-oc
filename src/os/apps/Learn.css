@@ -25,3 +25,5 @@
 .la-result { padding: 12px 14px; border-radius: 10px; font-weight: 600; animation: page-in .3s var(--ease) both; }
 .la-result.ok { background: rgba(48, 209, 88, .16); color: #30d158; }
 .la-result.bad { background: rgba(255, 69, 58, .14); color: #ff6961; }
+.learnapp .ls-drill { background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent) 5%, transparent)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent); }
+.learnapp .ls-drill-ico { background: var(--accent); }

@@ -2,9 +2,11 @@
 // список уроков (открывается и с экрана питания), окно «задание от преподавателя» по ссылке #task=.
 import { useEffect, useRef, useState } from "react";
 import { useLang } from "../machine/store";
+import type { Lang } from "../machine/i18n";
 import { LESSONS, lessonOf } from "./lessons";
 import { GOALS, parseTask, type Task } from "./tasks";
-import { attachLearning, leave, skipStep, startLesson, startTask, useLearn } from "./store";
+import { attachLearning, drillGiveUp, drillHint, drillNext, leave, skipStep, startDrill, startLesson, startTask, useLearn, type Drill } from "./store";
+import { DRILL, HINT_COST, SHIFT, drillFault } from "./drill";
 import "./learn.css";
 
 const LEVEL = { 1: ["Beginner", "Новичок"], 2: ["Intermediate", "Средний"], 3: ["Advanced", "Продвинутый"] } as const;
@@ -17,6 +19,18 @@ export function LessonList({ onStart }: { onStart?: () => void }) {
   const done = LESSONS.filter((x) => s.done[x.id]).length;
   return (
     <div className="ls-list">
+      <div className={"ls-drill" + (s.drill ? " active" : "")}>
+        <div className="ls-drill-ico" aria-hidden>
+          <svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z" /></svg>
+        </div>
+        <div className="ls-info">
+          <div className="ls-title">{t("Random breakdowns", "Случайные поломки")}</div>
+          <div className="ls-sum">{t(`A shift of ${SHIFT} random faults from ${DRILL.length}. You only hear the customer’s complaint — find the cause yourself. Points for speed, hints cost ${HINT_COST}.`,
+            `Смена из ${SHIFT} случайных неисправностей (всего ${DRILL.length}). Вы знаете только жалобу клиента — причину ищите сами. Очки за скорость, подсказка стоит ${HINT_COST}.`)}</div>
+          <div className="ls-meta">{s.drillBest ? t(`Best shift: ${s.drillBest} points`, `Лучшая смена: ${pts(s.drillBest)}`) : t("No shifts yet", "Ещё ни одной смены")}</div>
+        </div>
+        <button className="ls-go" onClick={() => { startDrill(); onStart?.(); }}>{s.drill ? t("New shift", "Новая смена") : t("Start shift", "Начать смену")}</button>
+      </div>
       <div className="ls-progress">
         <div className="ls-bar"><i style={{ width: `${(done / total) * 100}%` }} /></div>
         <span>{t(`${done} of ${total} lessons done`, `Пройдено ${done} из ${total}`)}</span>
@@ -53,7 +67,7 @@ function LessonCard() {
 
   const lesson = lessonOf(s.lesson);
   const finished = lessonOf(s.finished);
-  if (!lesson && !finished && !s.task) return null;
+  if (!lesson && !finished && !s.task && !s.drill) return null;
 
   const onDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest("button")) return;
@@ -70,7 +84,9 @@ function LessonCard() {
   let body: JSX.Element;
   let kind: string;
   let title: string;
-  if (finished) {
+  if (s.drill) {
+    [kind, title, body] = drillCard(s.drill, s.drillBest, t, lang);
+  } else if (finished) {
     kind = t("Lesson complete", "Урок пройден");
     title = finished.title[lang];
     const next = LESSONS[LESSONS.indexOf(finished) + 1];
@@ -128,7 +144,7 @@ function LessonCard() {
   }
 
   return (
-    <div className={"lesson-card" + (mini ? " mini" : "") + (finished || s.code ? " win" : "")} style={{ left: pos.x, top: pos.y }} onPointerDown={(e) => e.stopPropagation()}>
+    <div className={"lesson-card" + (mini ? " mini" : "") + (finished || s.code || (s.drill?.solved && !s.drill.solved.gaveUp) || s.drill?.over ? " win" : "")} style={{ left: pos.x, top: pos.y }} onPointerDown={(e) => e.stopPropagation()}>
       <div className="lc-head" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={() => { drag.current = null; }}>
         <span className="lc-kind">{kind}</span>
         <button className="lc-min" onClick={() => setMini(!mini)} aria-label="Collapse">{mini ? "▴" : "▾"}</button>
@@ -137,6 +153,82 @@ function LessonCard() {
       {!mini && body}
     </div>
   );
+}
+
+/** 1 очко, 2 очка, 5 очков */
+const pts = (n: number) => { const a = n % 10, b = n % 100; return `${n} ${a === 1 && b !== 11 ? "очко" : a >= 2 && a <= 4 && (b < 12 || b > 14) ? "очка" : "очков"}`; };
+
+const mmss = (ms: number) => { const sec = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`; };
+
+/** Секундомер текущей поломки. */
+function Clock({ since }: { since: number }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const id = window.setInterval(() => setNow(Date.now()), 500); return () => clearInterval(id); }, []);
+  return <span className="dr-clock">{mmss(now - since)}</span>;
+}
+
+type T = ReturnType<typeof useLang>["t"];
+
+/** Карточка тренировки: жалоба клиента, разбор после починки, итоги смены. */
+function drillCard(d: Drill, best: number, t: T, lang: Lang): [string, string, JSX.Element] {
+  const score = d.results.reduce((a, r) => a + r.points, 0);
+  const restore = <button onClick={() => leave(true)}>{t("Finish and restore my BIOS", "Закончить и вернуть мой BIOS")}</button>;
+  if (d.over) {
+    const record = score >= best && score > 0;
+    return [t("Shift complete", "Смена окончена"), t(`${score} points`, pts(score)), (
+      <>
+        {record && <div className="dr-record">{t("New personal best!", "Новый личный рекорд!")}</div>}
+        <ol className="dr-results">
+          {d.results.map((r) => {
+            const f = drillFault(r.id)!;
+            return (
+              <li key={r.id} className={r.gaveUp ? "gave" : ""}>
+                <span>{f.name[lang]}<b>{r.gaveUp ? t("gave up", "сдался") : `${mmss(r.ms)} · +${r.points}`}</b></span>
+              </li>
+            );
+          })}
+        </ol>
+        <div className="lc-small">{t(`Best shift: ${Math.max(best, score)} points`, `Лучшая смена: ${pts(Math.max(best, score))}`)}</div>
+        <div className="lc-actions">
+          <button className="lc-primary" onClick={startDrill}>{t("New shift", "Новая смена")}</button>
+          {restore}
+        </div>
+      </>
+    )];
+  }
+  const f = drillFault(d.queue[d.i])!;
+  const kind = t(`Breakdown ${d.i + 1} of ${d.queue.length}`, `Поломка ${d.i + 1} из ${d.queue.length}`);
+  const stars = "●".repeat(f.level) + "○".repeat(3 - f.level);
+  if (d.solved) {
+    const r = d.solved;
+    return [kind, r.gaveUp ? t("Here’s what it was", "Вот в чём было дело") : t("Fixed!", "Починено!"), (
+      <>
+        {!r.gaveUp && <div className="dr-gain">+{r.points} <small>{t(`in ${mmss(r.ms)}${r.hints ? `, ${r.hints} hint(s)` : ""}`, `за ${mmss(r.ms)}${r.hints ? `, подсказок: ${r.hints}` : ""}`)}</small></div>}
+        <p className="lc-text">{f.cause[lang]}</p>
+        <div className="lc-actions">
+          <button className="lc-primary" onClick={drillNext}>{d.i + 1 >= d.queue.length ? t("Shift results", "Итоги смены") : t("Next breakdown", "Следующая поломка")}</button>
+          {restore}
+        </div>
+      </>
+    )];
+  }
+  return [kind, t("A customer brought a PC", "Клиент принёс компьютер"), (
+    <>
+      <div className="dr-bar">
+        <span className="dr-level" title={t("Difficulty", "Сложность")}>{stars}</span>
+        <Clock since={d.started} key={d.started} />
+        <span className="dr-score">{t(`${score} pts`, `${score} очк.`)}</span>
+      </div>
+      <p className="lc-text" key={f.id}>{f.symptom[lang]}</p>
+      <div className="lc-goal"><span>{t("Done when", "Готово, когда")}</span>{GOALS[f.goal].title[lang]}{f.keep && <em>{f.keep.text[lang]}</em>}</div>
+      {f.hints.slice(0, d.hints).map((h, i) => <p className="lc-hint" key={i}>{h[lang]}</p>)}
+      <div className="lc-actions">
+        {d.hints < 2 && <button onClick={drillHint}>{t(`Hint (−${HINT_COST})`, `Подсказка (−${HINT_COST})`)}</button>}
+        <button onClick={drillGiveUp}>{t("Give up", "Сдаться")}</button>
+        {restore}
+      </div>
+    </>
+  )];
 }
 
 /** Окно выбора урока поверх экрана (с экрана питания, до загрузки ОС). */
