@@ -12,6 +12,7 @@ import { Tour } from "./Tour";
 import { TouchLayer } from "./Touch";
 import { QuestToast } from "./QuestToast";
 import { Learning } from "./learn/Learn";
+import { ClassLayer } from "./class/ClassUi";
 import { parseShared } from "./machine/profiles";
 import { PARAMS, formatValue } from "./machine/params";
 
@@ -91,6 +92,7 @@ export function App() {
       <Dialog />
       <QuestToast />
       <Learning />
+        <ClassLayer />
     </Stage>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useStore, useLang } from "../../machine/store";
 import { defaults } from "../../machine/params";
 import { LessonList } from "../../learn/Learn";
+import { ClassPanel } from "../../class/ClassUi";
 import { FAULTS, GOALS, newNonce, parseTask, taskLink, verifyCode, type Task } from "../../learn/tasks";
 import "./Learn.css";
 
@@ -13,14 +14,15 @@ const loadMine = (): { task: Task; at: number }[] => {
 /** «Обучение»: курс уроков и режим преподавателя (задания-поломки и проверка кодов). */
 export function Learn() {
   const { t } = useLang();
-  const [tab, setTab] = useState<"course" | "teacher">("course");
+  const [tab, setTab] = useState<"course" | "class" | "teacher">("course");
   return (
     <div className="learnapp">
       <div className="tm-tabs">
         <button className={tab === "course" ? "on" : ""} onClick={() => setTab("course")}>{t("Lessons", "Уроки")}</button>
+        <button className={tab === "class" ? "on" : ""} onClick={() => setTab("class")}>{t("My class", "Мой класс")}</button>
         <button className={tab === "teacher" ? "on" : ""} onClick={() => setTab("teacher")}>{t("For teachers", "Преподавателю")}</button>
       </div>
-      <div className="la-page" key={tab}>{tab === "course" ? <LessonList /> : <Teacher />}</div>
+      <div className="la-page" key={tab}>{tab === "course" ? <LessonList /> : tab === "class" ? <ClassPanel /> : <Teacher />}</div>
     </div>
   );
 }

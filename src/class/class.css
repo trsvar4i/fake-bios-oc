@@ -1,0 +1,52 @@
+/* «Мой класс» в симуляторе: и в тёмном окне с экрана питания, и в программе «Обучение» (светлая/тёмная тема) —
+   поэтому цвета нейтральные, а акцент берётся из --red (окно) или --accent (программа). */
+.cl-panel { --cl-acc: var(--accent, var(--red)); display: flex; flex-direction: column; gap: 12px; font-size: 16px; }
+.cl-panel p { margin: 0; line-height: 1.45; }
+.cl-panel h3 { margin: 8px 0 0; font-size: 15px; letter-spacing: .5px; text-transform: uppercase; opacity: .6; }
+.cl-note { opacity: .7; font-size: 15px; }
+.cl-auth, .cl-join { display: flex; flex-direction: column; gap: 10px; max-width: 460px; }
+.cl-auth label { display: flex; flex-direction: column; gap: 5px; font-size: 14px; opacity: .9; }
+.cl-panel input { height: 40px; padding: 0 12px; border: none; border-radius: 10px; outline: none; background: rgba(127, 127, 127, .14); color: inherit; font: inherit; font-size: 16px;
+  box-shadow: inset 0 0 0 1px rgba(127, 127, 127, .3); transition: box-shadow .2s; }
+.cl-panel input:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--cl-acc) 45%, transparent), inset 0 0 0 1px var(--cl-acc); }
+.cl-code-in { font-family: "JetBrains Mono", Consolas, monospace; letter-spacing: 4px; text-transform: uppercase; }
+.cl-seg { display: flex; gap: 4px; padding: 3px; border-radius: 12px; background: rgba(127, 127, 127, .14); align-self: flex-start; }
+.cl-seg button { height: 32px; padding: 0 16px; border-radius: 9px; font-size: 14px; font-weight: 600; opacity: .7; transition: background .2s, opacity .2s; }
+.cl-seg button.on { background: var(--cl-acc); color: #fff; opacity: 1; }
+.cl-primary { display: inline-flex; align-items: center; justify-content: center; height: 38px; padding: 0 18px; border-radius: 19px; background: var(--cl-acc); color: #fff !important;
+  font-weight: 700; font-size: 15px; text-decoration: none; flex: none; transition: filter .15s, transform .15s; }
+.cl-primary:hover { filter: brightness(1.12); }
+.cl-primary:active { transform: scale(.97); }
+.cl-primary:disabled { opacity: .45; }
+.cl-link { align-self: flex-start; }
+.cl-ghost { height: 34px; padding: 0 14px; border-radius: 17px; background: rgba(127, 127, 127, .16); font-size: 14px; font-weight: 600; flex: none; }
+.cl-ghost:hover { background: rgba(127, 127, 127, .26); }
+.cl-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.cl-error { padding: 8px 12px; border-radius: 10px; background: rgba(255, 69, 58, .16); color: #ff6961; font-size: 14px; font-weight: 600; }
+.cl-teacher-link { align-self: flex-start; font-size: 14px; color: var(--cl-acc); text-decoration: none; opacity: .9; }
+.cl-who { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: rgba(127, 127, 127, .1); }
+.cl-who > div:nth-child(2) { flex: 1; display: flex; flex-direction: column; }
+.cl-who span { font-size: 13px; opacity: .65; }
+.cl-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--cl-acc); color: #fff; font-weight: 800; font-size: 18px; }
+.cl-tasks { display: flex; flex-direction: column; gap: 8px; }
+.cl-task { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: rgba(127, 127, 127, .1); transition: background .2s; }
+.cl-task.active { box-shadow: inset 0 0 0 2px var(--cl-acc); }
+.cl-task-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cl-task-info span { font-size: 14px; opacity: .75; }
+.cl-task-info small { font-size: 12px; opacity: .55; }
+.cl-done { font-weight: 700; color: #30d158; font-variant-numeric: tabular-nums; }
+.cl-leave { align-self: flex-start; margin-top: 4px; }
+
+/* сообщение и блокировка экрана от учителя */
+.cl-msg { width: 620px; }
+.cl-msg p { font-size: 22px; line-height: 1.4; margin: 12px 0 4px; white-space: pre-wrap; }
+.cl-lock { position: absolute; inset: 0; z-index: 30000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  background: rgba(6, 8, 14, .9); backdrop-filter: blur(18px); color: #f2f3f7; font-family: "Manrope", "Inter", sans-serif; text-align: center; animation: tour-fade .4s ease both; }
+.cl-lock svg { width: 72px; height: 72px; fill: none; stroke: var(--red); stroke-width: 1.6; stroke-linecap: round; }
+.cl-lock h2 { margin: 0; font-size: 44px; font-weight: 700; }
+.cl-lock p { margin: 0; max-width: 1000px; font-size: 28px; opacity: .75; }
+
+/* вкладки в окне «Обучение» с экрана питания */
+.lm-tabs { display: flex; gap: 6px; margin: -4px 0 16px; }
+.lm-tabs button { height: 34px; padding: 0 16px; border-radius: 17px; background: rgba(255, 255, 255, .08); color: var(--lc-text); font-weight: 600; font-size: 15px; transition: background .2s; }
+.lm-tabs button.on { background: var(--red); color: #fff; }

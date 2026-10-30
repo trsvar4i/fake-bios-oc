@@ -68,6 +68,23 @@ export function taskLink(task: Task): string {
   return `${location.origin}${location.pathname}#task=${b64(JSON.stringify(task))}`;
 }
 
+/** Оставить только допустимые настройки BIOS (без пароля и языка) — для ссылок и заданий с сервера. */
+export function cleanCfg(raw: unknown): Config {
+  const d = defaults();
+  const c: Config = {};
+  if (!raw || typeof raw !== "object") return c;
+  for (const [k, v] of Object.entries(raw)) {
+    if (!(k in PARAMS) || k === "setupPassword" || k === "language") continue;
+    if (Array.isArray(d[k]) !== Array.isArray(v) || (!Array.isArray(v) && typeof d[k] !== typeof v)) continue;
+    const p = PARAMS[k];
+    if (p.type === "select" && !p.options!.includes(v as string)) continue;
+    if (p.type === "number" && (typeof v !== "number" || v < p.min! || v > p.max!)) continue;
+    if (k === "bootOrder" && !((v as string[]).length === DEVICE_IDS.length && DEVICE_IDS.every((x) => (v as string[]).includes(x)))) continue;
+    c[k] = v;
+  }
+  return c;
+}
+
 /** Разобрать задание из адреса или вставленной ссылки; настройки проверяются как у #cfg. */
 export function parseTask(text: string): Task | null {
   const m = text.match(/task=([\w-]+)/);
@@ -75,18 +92,7 @@ export function parseTask(text: string): Task | null {
   try {
     const raw = JSON.parse(unb64(m[1]));
     if (typeof raw.t !== "string" || typeof raw.g !== "string" || !GOALS[raw.g] || typeof raw.n !== "string") return null;
-    const d = defaults();
-    const c: Config = {};
-    for (const [k, v] of Object.entries(raw.c ?? {})) {
-      if (!(k in PARAMS) || k === "setupPassword" || k === "language") continue;
-      if (Array.isArray(d[k]) !== Array.isArray(v) || (!Array.isArray(v) && typeof d[k] !== typeof v)) continue;
-      const p = PARAMS[k];
-      if (p.type === "select" && !p.options!.includes(v as string)) continue;
-      if (p.type === "number" && (typeof v !== "number" || v < p.min! || v > p.max!)) continue;
-      if (k === "bootOrder" && !((v as string[]).length === DEVICE_IDS.length && DEVICE_IDS.every((x) => (v as string[]).includes(x)))) continue;
-      c[k] = v;
-    }
-    return { t: raw.t.slice(0, 120), d: String(raw.d ?? "").slice(0, 600), g: raw.g, c, n: raw.n.slice(0, 16) };
+    return { t: raw.t.slice(0, 120), d: String(raw.d ?? "").slice(0, 600), g: raw.g, c: cleanCfg(raw.c), n: raw.n.slice(0, 16) };
   } catch {
     return null;
   }

@@ -8,6 +8,7 @@ import { GOALS, parseTask, type Task } from "./tasks";
 import { attachLearning, drillGiveUp, drillHint, drillNext, leave, skipStep, startDrill, startLesson, startTask, useLearn, type Drill } from "./store";
 import { DRILL, HINT_COST, SHIFT, drillFault } from "./drill";
 import "./learn.css";
+import { ClassPanel } from "../class/ClassUi";
 
 const LEVEL = { 1: ["Beginner", "Новичок"], 2: ["Intermediate", "Средний"], 3: ["Advanced", "Продвинутый"] } as const;
 
@@ -102,10 +103,20 @@ function LessonCard() {
       </>
     );
   } else if (s.task) {
-    kind = t("Task from your teacher", "Задание преподавателя");
+    kind = t("Task from your teacher", "Задание учителя");
     title = s.task.t;
     const goal = GOALS[s.task.g];
-    body = s.code ? (
+    const fromClass = s.task.n.startsWith("class-");
+    body = s.code && fromClass ? (
+      <>
+        <div className="lc-done-big">{t("Done!", "Готово!")}</div>
+        <div className="lc-small">{t("The result has been sent to your teacher.", "Результат отправлен учителю.")}</div>
+        <div className="lc-actions">
+          {s.backup && <button onClick={() => leave(true)}>{t("Restore my BIOS settings", "Вернуть мои настройки BIOS")}</button>}
+          <button onClick={() => leave(false)}>{t("Close", "Закрыть")}</button>
+        </div>
+      </>
+    ) : s.code ? (
       <>
         <div className="lc-done-big">{t("Done!", "Готово!")}</div>
         <div className="lc-code-label">{t(`Completion code for ${s.student}:`, `Код выполнения для ${s.student}:`)}</div>
@@ -121,7 +132,8 @@ function LessonCard() {
       <>
         {s.task.d && <p className="lc-text">{s.task.d}</p>}
         <div className="lc-goal"><span>{t("Goal", "Цель")}</span>{goal.title[lang]}</div>
-        <div className="lc-small">{t("The check is automatic. When the goal is reached you get a code for your teacher.", "Проверка автоматическая. Когда цель будет достигнута, появится код для преподавателя.")}</div>
+        <div className="lc-small">{fromClass ? t("The check is automatic; your teacher sees the result.", "Проверка автоматическая — учитель увидит результат.")
+          : t("The check is automatic. When the goal is reached you get a code for your teacher.", "Проверка автоматическая. Когда цель будет достигнута, появится код для преподавателя.")}</div>
         <div className="lc-actions"><button onClick={() => leave(true)}>{t("Give up and restore BIOS", "Сдаться и вернуть BIOS")}</button></div>
       </>
     );
@@ -235,7 +247,9 @@ function drillCard(d: Drill, best: number, t: T, lang: Lang): [string, string, J
 function LessonPicker() {
   const { t } = useLang();
   const open = useLearn((s) => s.picker);
+  const [tab, setTab] = useState<"lessons" | "class">("lessons");
   if (!open) return null;
+  const close = () => useLearn.setState({ picker: false });
   return (
     <div className="learn-modal" onPointerDown={() => useLearn.setState({ picker: false })}>
       <div className="learn-sheet" onPointerDown={(e) => e.stopPropagation()}>
@@ -243,7 +257,11 @@ function LessonPicker() {
           <h2>{t("Learn how a PC works", "Как устроен компьютер — уроки")}</h2>
           <button className="lm-x" onClick={() => useLearn.setState({ picker: false })} aria-label="Close">×</button>
         </div>
-        <LessonList />
+        <div className="lm-tabs">
+          <button className={tab === "lessons" ? "on" : ""} onClick={() => setTab("lessons")}>{t("Lessons", "Уроки")}</button>
+          <button className={tab === "class" ? "on" : ""} onClick={() => setTab("class")}>{t("My class", "Мой класс")}</button>
+        </div>
+        {tab === "lessons" ? <LessonList /> : <ClassPanel onStart={close} />}
       </div>
     </div>
   );
