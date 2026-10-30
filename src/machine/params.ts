@@ -30,9 +30,15 @@ const toggle = (label: L, def: boolean, help: L, disabledIf?: Param["disabledIf"
 const select = (label: L, options: string[], def: string, help: L, disabledIf?: Param["disabledIf"]): Param =>
   ({ label, type: "select", options, default: def, help, disabledIf });
 
+/** Язык по умолчанию — как у браузера (русский для ru/uk/be/kk), иначе английский. */
+function browserLanguage(): "English" | "Русский" {
+  const lang = typeof navigator !== "undefined" ? navigator.language ?? "" : "";
+  return /^(ru|uk|be|kk)/i.test(lang) ? "Русский" : "English";
+}
+
 export const PARAMS: Record<string, Param> = {
   // Main
-  language: select(l("System Language", "Язык системы"), ["English", "Русский"], "English",
+  language: select(l("System Language", "Язык системы"), ["English", "Русский"], browserLanguage(),
     l("Language of the Setup interface.", "Язык интерфейса Setup.")),
 
   // CPU
